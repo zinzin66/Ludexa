@@ -3,15 +3,12 @@
     --surface-dark: #181b20;
     --surface-alt: #22262f;
     --primary: #6dbf4b;
-    --primary-light: #89c76c;
     --accent: #3b82f6;
     --text-main: #f0f4f8;
     --text-muted: #94a3b8;
     --border-color: #2e3440;
-    
     --success: #22c55e;
     --warning: #f59e0b;
-    
     --topbar-height: 56px;
     --sidebar-width: 320px;
 }
@@ -24,11 +21,11 @@
     user-select: none;
 }
 
-body, html {
+html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: system-ui, -apple-system, sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
 }
@@ -49,39 +46,34 @@ body, html {
     align-items: center;
     justify-content: space-between;
     padding: 0 1rem;
-    z-index: 10;
+    flex-shrink: 0;
 }
 
 .brand h1 {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     color: var(--primary);
-    letter-spacing: 1px;
 }
 
-.controls-center, .mode-switch {
+.controls-center, .right-actions, .mode-switch {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
 }
 
-/* --- BOUTONS TACTILES --- */
+/* BOUTONS GENERAUX */
 .btn {
-    min-height: 40px;
-    padding: 0 1rem;
+    height: 38px;
+    padding: 0 0.8rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #fff;
     background: var(--surface-alt);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s, transform 0.1s;
-}
-
-.btn:active {
-    transform: scale(0.96);
 }
 
 .btn-success { background-color: var(--success); color: #000; }
@@ -99,19 +91,39 @@ body, html {
     border-color: var(--accent);
 }
 
-/* --- WORKSPACE & VIEWPORT --- */
+/* BOUTON TOGGLE (FIXE ET CARRÉ) */
+.btn-toggle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 6px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* --- WORKSPACE --- */
 #workspace {
     display: flex;
     flex: 1;
+    width: 100%;
+    height: calc(100vh - var(--topbar-height));
     position: relative;
     overflow: hidden;
 }
 
+/* CANVAS / VIEWPORT À GAUCHE */
 #viewport {
     flex: 1;
     height: 100%;
     background-color: #050505;
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -119,105 +131,83 @@ body, html {
 
 #canvas-placeholder {
     color: var(--text-muted);
-    font-size: 1.1rem;
     border: 2px dashed var(--border-color);
     padding: 2rem;
-    border-radius: 12px;
-}
-
-/* --- TOGGLE BOUTON PANNEAU --- */
-.btn-sidebar-toggle {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    z-index: 5;
-    width: 44px;
-    height: 44px;
-    background-color: var(--surface-dark);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
     border-radius: 8px;
-    font-size: 1.2rem;
-    cursor: pointer;
 }
 
-/* --- PANNEAU LATÉRAL --- */
+/* PANNEAU LATÉRAL À DROITE */
 #sidebar {
     width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
     height: 100%;
     background-color: var(--surface-dark);
     border-left: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    transition: margin-right 0.3s ease;
 }
 
-#sidebar.sidebar-closed {
-    transform: translateX(100%);
-    position: absolute;
-    right: 0;
+/* Classe quand le menu est masqué */
+#sidebar.closed {
+    margin-right: calc(-1 * var(--sidebar-width));
 }
 
+/* SECTIONS DANS LE PANNEAU */
 .sidebar-section {
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid var(--border-color);
+    overflow: hidden;
 }
 
-#scene-tree-section {
-    flex: 1;
-    min-height: 200px;
-}
-
-#inspector-section {
-    flex: 1.5;
-}
+#scene-tree-section { height: 30%; }
+#inspector-section { height: 45%; }
+#assets-section { height: 25%; }
 
 .section-header {
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     background-color: var(--surface-alt);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .section-header h2 {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
     color: var(--text-muted);
 }
 
 .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     background: var(--primary);
     color: #000;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     font-weight: bold;
-    font-size: 1.1rem;
 }
 
-/* --- LISTES ET DÉFILEMENT TACTILE --- */
-.scrollable-list, .scrollable-content {
+/* DEFILEMENTS */
+.scrollable-list, .scrollable-content, .scrollable-grid {
     overflow-y: auto;
     padding: 0.5rem;
 }
 
-.scrollable-list {
-    list-style: none;
-}
+.scrollable-list { list-style: none; }
 
 .object-item {
     display: flex;
     align-items: center;
-    padding: 0.75rem;
-    margin-bottom: 0.4rem;
+    padding: 0.5rem;
+    margin-bottom: 0.3rem;
     background-color: var(--surface-dark);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.95rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
 }
 
 .object-item.active {
@@ -226,14 +216,14 @@ body, html {
 }
 
 .obj-icon { margin-right: 0.5rem; }
-.obj-name { flex: 1; font-weight: 500; }
-.obj-zindex { font-size: 0.75rem; color: var(--text-muted); }
+.obj-name { flex: 1; }
+.obj-zindex { font-size: 0.7rem; color: var(--text-muted); }
 
-/* --- FORMULAIRES DE L'INSPECTEUR --- */
+/* INSPECTEUR */
 .prop-group {
     display: flex;
     flex-direction: column;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .prop-row {
@@ -241,36 +231,46 @@ body, html {
     gap: 0.5rem;
 }
 
-.prop-row .prop-group {
-    flex: 1;
-}
+.prop-row .prop-group { flex: 1; }
 
 label {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem;
 }
 
 .touch-input {
-    min-height: 42px;
+    height: 36px;
     background-color: var(--surface-alt);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 4px;
     color: var(--text-main);
-    padding: 0 0.75rem;
-    font-size: 0.95rem;
-}
-
-.touch-input:focus {
-    border-color: var(--accent);
-    outline: none;
+    padding: 0 0.5rem;
+    font-size: 0.85rem;
 }
 
 .touch-color-input {
     width: 100%;
-    height: 42px;
+    height: 36px;
     border: none;
-    border-radius: 6px;
     background: transparent;
-    cursor: pointer;
 }
+
+/* GRILLE ASSETS */
+.scrollable-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+}
+
+.asset-card {
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.4rem;
+    text-align: center;
+}
+
+.asset-icon { font-size: 1rem; }
+.asset-name { font-size: 0.7rem; color: var(--text-muted); display: block; }
+
