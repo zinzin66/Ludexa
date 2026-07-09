@@ -2,67 +2,72 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Ludexa IDE - Moteur 2D Tablette</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludexa 2D Éditeur</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <header class="topbar">
-            <button id="btn-toggle-sidebar" class="btn" title="Menu Panneau">☰</button>
-            <div class="divider"></div>
-            
-            <div class="scene-selector">
-                <select id="select-scene">
-                    <option value="scene1">Scène 1</option>
-                </select>
-                <button id="btn-add-scene" class="btn">+</button>
-                <button id="btn-remove-scene" class="btn">-</button>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="tools">
-                <button id="btn-tool-hand" class="btn tool-btn" title="Glisser la vue">✋</button>
-                <button id="btn-toggle-grid" class="btn tool-btn active" title="Afficher la grille">🏁</button>
-                <div class="zoom-controls">
-                    <button id="btn-zoom-in" class="btn">🔍+</button>
-                    <button id="btn-zoom-reset" class="btn">1:1</button>
-                    <button id="btn-zoom-out" class="btn">🔍-</button>
-                </div>
-            </div>
-        </header>
 
-        <div class="main-container">
-            <aside id="sidebar" class="sidebar">
-                <section class="panel">
-                    <h3>Arborescence</h3>
-                    <ul id="treeview" class="treeview-list"></ul>
-                </section>
-
-                <section class="panel">
-                    <h3>Inspecteur</h3>
-                    <div id="inspector" class="inspector-fields">
-                        <p class="placeholder-text">Sélect. un objet</p>
-                    </div>
-                </section>
-
-                <section class="panel">
-                    <h3>Ressources</h3>
-                    <div class="resources-list">
-                        <button id="btn-add-rect" class="btn btn-block">+ Rectangle</button>
-                        <button id="btn-add-text" class="btn btn-block">+ Texte</button>
-                    </div>
-                </section>
-            </aside>
-
-            <main class="canvas-container">
-                <canvas id="editor-canvas" width="800" height="450"></canvas>
-            </main>
+    <header id="top-navbar">
+        <button id="btn-toggle-sidebar">☰</button>
+        <div class="nav-group">
+            <select id="select-scene">
+                <option value="scene1">Scène 1</option>
+            </select>
+            <button id="btn-add-scene">+</button>
+            <button id="btn-remove-scene">-</button>
+            <button id="btn-rename-scene">✏️</button>
         </div>
-    </div>
+        <div class="nav-group" style="margin-left: auto;">
+            <button id="btn-tool-hand" title="Outil Main (Pan)">🖐️</button>
+            <button id="btn-toggle-grid" class="active" title="Grille">🌐 Grille</button>
+            <button id="btn-zoom-out">-</button>
+            <button id="btn-zoom-reset">1:1</button>
+            <button id="btn-zoom-in">+</button>
+        </div>
+    </header>
 
-    <script src="ludexa.js"></script>
+    <main id="workspace">
+        <aside id="sidebar">
+            <section class="panel">
+                <div class="panel-header">Arborescence <span>▼</span></div>
+                <div class="panel-content">
+                    <ul id="treeview"></ul>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">Inspecteur <span>▼</span></div>
+                <div class="panel-content" id="inspector">
+                    <p class="placeholder-text">Sélect. un objet</p>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">Ressources <span>▼</span></div>
+                <div class="panel-content" style="display: flex; flex-direction: column; gap: 6px;">
+                    <button id="btn-add-rect">+ Rectangle</button>
+                    <button id="btn-add-circle">+ Rond</button>
+                    <button id="btn-add-button">+ Bouton</button>
+                    <button id="btn-add-text">+ Texte</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">Assets (Fichiers) <span>▼</span></div>
+                <div class="panel-content">
+                    <div id="assets-list-container" style="margin-bottom: 8px;"></div>
+                    <button id="btn-import-asset" style="width: 100%;">+ Importer Asset</button>
+                </div>
+            </section>
+        </aside>
+
+        <div id="canvas-container">
+            <canvas id="editor-canvas"></canvas>
+        </div>
+    </main>
+
+    <script type="module" src="main.js"></script>
 </body>
 </html>
 
