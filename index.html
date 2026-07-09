@@ -3,125 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Ludexa IDE - Engine 2D</title>
+    <title>Ludexa IDE - Moteur 2D Tablette</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app-container">
-        <header id="top-bar">
-            <div class="brand">
-                <h1>Ludexa</h1>
+    <div id="app">
+        <header class="topbar">
+            <button id="btn-toggle-sidebar" class="btn" title="Menu Panneau">☰</button>
+            <div class="divider"></div>
+            
+            <div class="scene-selector">
+                <select id="select-scene">
+                    <option value="scene1">Scène 1</option>
+                </select>
+                <button id="btn-add-scene" class="btn">+</button>
+                <button id="btn-remove-scene" class="btn">-</button>
             </div>
             
-            <div class="controls-center">
-                <button id="btn-play" class="btn btn-success">▶ Play</button>
-                <button id="btn-pause" class="btn btn-warning">⏸ Pause</button>
-            </div>
-
-            <div class="right-actions">
-                <div class="mode-switch">
-                    <button id="btn-mode-scene" class="btn btn-mode active">🎨 Scène</button>
-                    <button id="btn-mode-logic" class="btn btn-mode">🧩 Logique</button>
+            <div class="divider"></div>
+            
+            <div class="tools">
+                <button id="btn-tool-hand" class="btn tool-btn" title="Glisser la vue">✋</button>
+                <button id="btn-toggle-grid" class="btn tool-btn active" title="Afficher la grille">🏁</button>
+                <div class="zoom-controls">
+                    <button id="btn-zoom-in" class="btn">🔍+</button>
+                    <button id="btn-zoom-reset" class="btn">1:1</button>
+                    <button id="btn-zoom-out" class="btn">🔍-</button>
                 </div>
-                <button id="toggle-sidebar" class="btn-toggle">☰</button>
             </div>
         </header>
 
-        <div id="workspace">
-            <main id="viewport">
-                <div id="canvas-placeholder">
-                    <span>Zone de Rendu 2D</span>
-                </div>
-            </main>
-
-            <aside id="sidebar">
-                
-                <section class="sidebar-section" id="scene-tree-section">
-                    <div class="section-header">
-                        <h2>Objets de la scène</h2>
-                        <button id="btn-add-object" class="btn-icon">+</button>
-                    </div>
-                    <ul id="object-list" class="scrollable-list">
-                        <li class="object-item active">
-                            <span class="obj-icon">🔲</span>
-                            <span class="obj-name">Joueur</span>
-                            <span class="obj-zindex">Z: 2</span>
-                        </li>
-                        <li class="object-item">
-                            <span class="obj-icon">🔤</span>
-                            <span class="obj-name">textVar</span>
-                            <span class="obj-zindex">Z: 1</span>
-                        </li>
-                        <li class="object-item">
-                            <span class="obj-icon">🖼️</span>
-                            <span class="obj-name">Fond</span>
-                            <span class="obj-zindex">Z: 0</span>
-                        </li>
-                    </ul>
+        <div class="main-container">
+            <aside id="sidebar" class="sidebar">
+                <section class="panel">
+                    <h3>Arborescence</h3>
+                    <ul id="treeview" class="treeview-list"></ul>
                 </section>
 
-                <section class="sidebar-section" id="inspector-section">
-                    <div class="section-header">
-                        <h2>Inspecteur</h2>
-                    </div>
-                    <div id="inspector-content" class="scrollable-content">
-                        <div class="prop-group">
-                            <label>Nom de l'instance</label>
-                            <input type="text" id="prop-name" value="Joueur" class="touch-input">
-                        </div>
-                        <div class="prop-row">
-                            <div class="prop-group">
-                                <label>Pos X</label>
-                                <input type="number" id="prop-x" value="100" class="touch-input">
-                            </div>
-                            <div class="prop-group">
-                                <label>Pos Y</label>
-                                <input type="number" id="prop-y" value="150" class="touch-input">
-                            </div>
-                        </div>
-                        <div class="prop-row">
-                            <div class="prop-group">
-                                <label>Largeur (W)</label>
-                                <input type="number" id="prop-w" value="50" class="touch-input">
-                            </div>
-                            <div class="prop-group">
-                                <label>Hauteur (H)</label>
-                                <input type="number" id="prop-h" value="50" class="touch-input">
-                            </div>
-                        </div>
-                        <div class="prop-group">
-                            <label>Couleur / Filtre</label>
-                            <input type="color" id="prop-color" value="#6dbf4b" class="touch-color-input">
-                        </div>
-                        <div class="prop-group">
-                            <label>Texte</label>
-                            <input type="text" id="prop-text" placeholder="Affiche une valeur..." class="touch-input">
-                        </div>
+                <section class="panel">
+                    <h3>Inspecteur</h3>
+                    <div id="inspector" class="inspector-fields">
+                        <p class="placeholder-text">Sélect. un objet</p>
                     </div>
                 </section>
 
-                <section class="sidebar-section" id="assets-section">
-                    <div class="section-header">
-                        <h2>Assets / Ressources</h2>
-                        <button id="btn-import-asset" class="btn-icon">+</button>
-                    </div>
-                    <div id="assets-grid" class="scrollable-grid">
-                        <div class="asset-card">
-                            <span class="asset-icon">🖼️</span>
-                            <span class="asset-name">hero.png</span>
-                        </div>
-                        <div class="asset-card">
-                            <span class="asset-icon">🖼️</span>
-                            <span class="asset-name">door.png</span>
-                        </div>
-                        <div class="asset-card">
-                            <span class="asset-icon">🎵</span>
-                            <span class="asset-name">click.mp3</span>
-                        </div>
+                <section class="panel">
+                    <h3>Ressources</h3>
+                    <div class="resources-list">
+                        <button id="btn-add-rect" class="btn btn-block">+ Rectangle</button>
+                        <button id="btn-add-text" class="btn btn-block">+ Texte</button>
                     </div>
                 </section>
-
             </aside>
+
+            <main class="canvas-container">
+                <canvas id="editor-canvas" width="800" height="450"></canvas>
+            </main>
         </div>
     </div>
 
