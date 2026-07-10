@@ -25,7 +25,7 @@ export class LudexaEngine {
         this.draggedObject = null;
         this.dragOffset = { x: 0, y: 0 };
         this.activeHandle = null; 
-        this.handleSize = 20; // Augmenté à 20 pour que ce soit ultra facile à viser au doigt sur écran tactile !
+        this.handleSize = 24; // Augmenté à 24 pour que ce soit encore plus facile à viser avec le doigt !
 
         this.resizeCanvas();
         window.addEventListener('resize', () => { this.resizeCanvas(); this.render(); });
@@ -48,11 +48,11 @@ export class LudexaEngine {
     updateInspector() { this.ui.updateInspector(); }
     updateAssetsUI() { this.ui.updateAssetsUI(); }
 
+    // CORRECTION ICI : "top" devient bien "rect.top" pour que le clic au doigt tombe pile au bon endroit
     screenToWorld(screenX, screenY) {
         const rect = this.canvas.getBoundingClientRect();
         const canvasX = screenX - rect.left;
-        const canvasY = screenY - top;
-        // Correction de la formule de conversion pour le tactile
+        const canvasY = screenY - rect.top; 
         return { 
             x: (canvasX - this.panX) / this.zoom, 
             y: (canvasY - this.panY) / this.zoom 
@@ -105,7 +105,6 @@ export class LudexaEngine {
         });
     }
 
-    // CORRECTION : La fonction prend maintenant correctement l'objet en paramètre pour calculer ses coins
     getHitHandle(obj, worldX, worldY) {
         if (!obj || (obj.type !== 'rect' && obj.type !== 'button')) return null;
         const s = this.handleSize / this.zoom;
