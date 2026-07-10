@@ -1,9 +1,55 @@
+import { SceneManager } from './scenes.js';
+import { AssetManager } from './assets.js';
+import { StorageManager } from './storage.js'; // Indispensable pour la communication interne
+
 export class UIManager {
     constructor(engine) {
         this.e = engine;
     }
 
     init() {
+        const startScreen = document.getElementById('start-screen');
+        const selectScene = document.getElementById('select-scene');
+
+        // GESTION DE LA PAGE DE DÉMARRAGE
+        document.getElementById('btn-new-project')?.addEventListener('click', () => {
+            this.e.clearProject();
+            this.e.projectName = "ludexa_projet"; // Réinitialise le nom par défaut
+            this.rebuildSceneSelector();
+            if (startScreen) startScreen.style.display = 'none';
+            this.updateTreeview();
+            this.updateInspector();
+            this.e.render();
+        });
+
+        // IMPORTATION DIRECTE DEPUIS L'ÉLÉMENT HTML
+        document.getElementById('input-import-project')?.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            this.e.storage.importProject(file, (success) => {
+                if (success) {
+                    this.rebuildSceneSelector();
+                    if (startScreen) startScreen.style.display = 'none';
+                    this.updateTreeview();
+                    this.updateInspector();
+                    this.e.render();
+                }
+                event.target.value = ''; // Reset l'input
+            });
+        });
+
+        // EXPORTATION DU PROJET
+        document.getElementById('btn-export-project')?.addEventListener('click', () => {
+            this.e.storage.exportProject();
+        });
+
+        document.getElementById('btn-close-project')?.addEventListener('click', () => {
+            if (confirm("Quitter le projet en cours ? Pensez à l'exporter pour ne pas perdre vos changements.")) {
+                if (startScreen) startScreen.style.display = 'flex';
+            }
+        });
+
+        // RESTE DES ÉLÉMENTS DE L'ÉDITEUR
         document.getElementById('btn-toggle-sidebar')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('hidden');
         });
@@ -15,9 +61,7 @@ export class UIManager {
             });
         });
 
-        const selectScene = document.getElementById('select-scene');
         if (selectScene) {
-            selectScene.value = this.e.sm.currentSceneId;
             selectScene.addEventListener('change', (e) => {
                 this.e.sm.currentSceneId = e.target.value;
                 this.e.selectedObjectId = null;
@@ -66,7 +110,6 @@ export class UIManager {
             }
         });
 
-        // AJOUT : Gestionnaire du bouton renommer la scène en cours
         document.getElementById('btn-rename-scene')?.addEventListener('click', () => {
             if (!selectScene) return;
             const currentOption = selectScene.querySelector(`option[value="${this.e.sm.currentSceneId}"]`);
@@ -113,8 +156,39 @@ export class UIManager {
             fileInput.click();
         });
 
+        // CONFIGURATION PARAMÈTRES DU PROJET
+        this.e.projectName = "ludexa_projet";
+        const settingsModal = document.getElementById('project-settings-modal');
+        const inputProjectName = document.getElementById('input-project-name');
+
+        document.getElementById('btn-project-settings')?.addEventListener('click', () => {
+            if (inputProjectName) inputProjectName.value = this.e.projectName || "ludexa_projet";
+            if (settingsModal) settingsModal.style.display = 'flex';
+        });
+
+        document.getElementById('btn-close-settings')?.addEventListener('click', () => {
+            if (settingsModal) settingsModal.style.display = 'none';
+        });
+
+        inputProjectName?.addEventListener('input', (e) => {
+            this.e.projectName = e.target.value.trim() || "ludexa_projet";
+        });
+
         this.updateAssetsUI();
         this.updateTreeview();
+    }
+
+    rebuildSceneSelector() {
+        const selectScene = document.getElementById('select-scene');
+        if (!selectScene) return;
+        selectScene.innerHTML = '';
+        Object.keys(this.e.sm.scenes).forEach((sceneId, index) => {
+            const option = document.createElement('option');
+            option.value = sceneId;
+            option.textContent = `Scène ${index + 1}`;
+            selectScene.appendChild(option);
+        });
+        selectScene.value = this.e.sm?.currentSceneId || Object.keys(this.e.sm.scenes)[0];
     }
 
     updateTreeview() {
@@ -125,8 +199,8 @@ export class UIManager {
             const li = document.createElement('li');
             let icon = '📝';
             if (obj.type === 'rect') icon = obj.assetId ? '🖼️' : '⬛';
-            if (obj.type === 'circle') icon = '⚪';
-            if (obj.type === 'button') icon = '🔘';
+            if (obj.type === 'circle') icon = obj.assetId ? '🖼️⚪' : '⚪';
+            if (obj.type === 'button') icon = obj.assetId ? '🖼️🔘' : '🔘';
             li.textContent = `${obj.visible ? '👁️' : '🚫'} ${icon} ${obj.name}`;
             if (obj.id === this.e.selectedObjectId) li.classList.add('selected');
             li.addEventListener('click', () => {
@@ -188,11 +262,23 @@ export class UIManager {
             });
             html += `</select></div>`;
         } else if (obj.type === 'circle') {
-            html += `<div class="field-group"><label>Rayon (R)</label><input type="number" id="prop-r" value="${obj.r}"></div>`;
+            html += `<div class="field-group"><label>Rayon (R)</label><input type="number" id="prop-r" value="${obj.r}"></div>
+                     <div class="field-group"><label>Texture Image</label><select id="prop-asset"><option value="">-- Aucune --</option>`;
+            this.e.am.getAllAssets().forEach(asset => { 
+                if (asset.type === 'image') html += `<option value="${asset.id}" ${obj.assetId===asset.id?'selected':''}>${asset.name}</option>`; 
+            });
+            html += `</select></div>`;
         } else if (obj.type === 'button') {
-            html += `<div class="field-group"><label>Largeur (W)</label><input type="number" id="prop-w" value="${obj.w}"></div><div class="field-group"><label>Hauteur (H)</label><input type="number" id="prop-h" value="${obj.h}"></div>
-                     <div class="field-group"><label>Texte</label><input type="text" id="prop-text" value="${obj.text}"></div><div class="field-group"><label>Taille Font</label><input type="number" id="prop-fontsize" value="${obj.fontSize || 16}"></div>
-                     <div class="field-group"><label>Couleur Txt</label><input type="color" id="prop-textcolor" value="${obj.textColor || '#ffffff'}"></div>`;
+            html += `<div class="field-group"><label>Largeur (W)</label><input type="number" id="prop-w" value="${obj.w}"></div>
+                     <div class="field-group"><label>Hauteur (H)</label><input type="number" id="prop-h" value="${obj.h}"></div>
+                     <div class="field-group"><label>Texte</label><input type="text" id="prop-text" value="${obj.text}"></div>
+                     <div class="field-group"><label>Taille Font</label><input type="number" id="prop-fontsize" value="${obj.fontSize || 16}"></div>
+                     <div class="field-group"><label>Couleur Txt</label><input type="color" id="prop-textcolor" value="${obj.textColor || '#ffffff'}"></div>
+                     <div class="field-group"><label>Texture Image</label><select id="prop-asset"><option value="">-- Aucune --</option>`;
+            this.e.am.getAllAssets().forEach(asset => { 
+                if (asset.type === 'image') html += `<option value="${asset.id}" ${obj.assetId===asset.id?'selected':''}>${asset.name}</option>`; 
+            });
+            html += `</select></div>`;
         } else if (obj.type === 'text') {
             html += `<div class="field-group"><label>Texte</label><input type="text" id="prop-text" value="${obj.text}"></div><div class="field-group"><label>Taille Font</label><input type="number" id="prop-fontsize" value="${obj.fontSize || 20}"></div>`;
         }

@@ -8,6 +8,33 @@
 </head>
 <body>
 
+    <!-- ÉCRAN DE DÉMARRAGE -->
+    <div id="start-screen">
+        <div class="start-card">
+            <div class="start-logo">🕹️</div>
+            <h1>Ludexa 2D Engine</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 14px;">Éditeur de jeux et prototypes 2D</p>
+            
+            <div class="start-sections">
+                <div class="start-section-box">
+                    <h3>Nouveau Projet</h3>
+                    <p>Commencer un canevas entièrement vide.</p>
+                    <button id="btn-new-project" class="btn-primary">Créer un Projet</button>
+                </div>
+                
+                <div class="start-section-box">
+                    <h3>Projet Existant</h3>
+                    <p>Reprendre un fichier de sauvegarde Ludexa.</p>
+                    <label for="input-import-project" class="btn-secondary-file">
+                        Ouvrir / Importer (.json)
+                    </label>
+                    <input type="file" id="input-import-project" accept=".json" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BARRE DE NAVIGATION DU HAUT -->
     <header id="top-navbar">
         <button id="btn-toggle-sidebar">☰</button>
         <div class="nav-group">
@@ -19,6 +46,10 @@
             <button id="btn-rename-scene">✏️</button>
         </div>
         <div class="nav-group" style="margin-left: auto;">
+            <button id="btn-project-settings" title="Paramètres du projet">⚙️ Projet</button>
+            <button id="btn-export-project" title="Exporter le projet" style="background: #2ed573; color: #fff; border: none;">💾 Exporter</button>
+            <button id="btn-close-project" title="Quitter le projet">❌ Quitter</button>
+            <span style="color: var(--border-color); margin: 0 4px;">|</span>
             <button id="btn-tool-hand" title="Outil Main (Pan)">🖐️</button>
             <button id="btn-toggle-grid" class="active" title="Grille">🌐 Grille</button>
             <button id="btn-zoom-out">-</button>
@@ -27,19 +58,14 @@
         </div>
     </header>
 
+    <!-- ZONE DE TRAVAIL -->
     <main id="workspace">
+        <!-- BARRE GAUCHE : Arborescence et Outils -->
         <aside id="sidebar">
             <section class="panel">
                 <div class="panel-header">Arborescence <span>▼</span></div>
                 <div class="panel-content">
                     <ul id="treeview"></ul>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">Inspecteur <span>▼</span></div>
-                <div class="panel-content" id="inspector">
-                    <p class="placeholder-text">Sélect. un objet</p>
                 </div>
             </section>
 
@@ -62,10 +88,35 @@
             </section>
         </aside>
 
+        <!-- ZONE CENTRALE : Le Canevas -->
         <div id="canvas-container">
             <canvas id="editor-canvas"></canvas>
         </div>
+
+        <!-- BARRE DROITE : Inspecteur uniquement -->
+        <aside id="sidebar-right">
+            <section class="panel" style="height: 100%;">
+                <div class="panel-header">Inspecteur <span>▼</span></div>
+                <div class="panel-content" id="inspector">
+                    <p class="placeholder-text">Sélect. un objet</p>
+                </div>
+            </section>
+        </aside>
     </main>
+
+    <!-- FENÊTRE CONFIGURATION PROJET -->
+    <div id="project-settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-sidebar); border: 1px solid var(--border-color); padding: 24px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">Paramètres du Projet</h3>
+            <div class="field-group" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                <label for="input-project-name" style="color: var(--text-muted); font-size: 13px;">Nom du projet</label>
+                <input type="text" id="input-project-name" style="width: 100%; background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-color); padding: 8px; border-radius: 4px;" value="ludexa_projet">
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+                <button id="btn-close-settings" style="background: var(--accent-color); color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">Fermer</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="main.js"></script>
 </body>

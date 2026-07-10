@@ -2,6 +2,7 @@ import { SceneManager } from './scenes.js';
 import { AssetManager } from './assets.js';
 import { UIManager } from './ui.js';
 import { InputManager } from './input.js';
+import { StorageManager } from './storage.js';
 
 export class LudexaEngine {
     constructor() {
@@ -16,6 +17,7 @@ export class LudexaEngine {
 
         this.sm = new SceneManager();
         this.am = new AssetManager();
+        this.storage = new StorageManager(this);
         this.ui = new UIManager(this);
         this.input = new InputManager(this);
         
@@ -42,6 +44,15 @@ export class LudexaEngine {
 
     get objects() { 
         return this.sm.objects; 
+    }
+
+    clearProject() {
+        this.sm.scenes = { scene1: [] };
+        this.sm.currentSceneId = 'scene1';
+        this.selectedObjectId = null;
+        this.panX = 0;
+        this.panY = 0;
+        this.zoom = 1;
     }
 
     updateTreeview() { this.ui.updateTreeview(); }
@@ -78,6 +89,7 @@ export class LudexaEngine {
             opacity: 1,
             zIndex: count, 
             visible: true,
+            assetId: '', // AJOUT Initialisation de la texture vide
             text: type === 'button' || type === 'text' ? 'Mon Texte' : ''
         };
         
@@ -104,7 +116,6 @@ export class LudexaEngine {
         });
     }
 
-    // MISE À JOUR : Détection des poignées étendue à tous les types d'objets
     getHitHandle(obj, worldX, worldY) {
         if (!obj) return null;
         const s = this.handleSize / this.zoom;
@@ -126,7 +137,6 @@ export class LudexaEngine {
                 }
             }
         } else if (obj.type === 'circle') {
-            // Pour le cercle, on met une poignée unique "radius" sur son bord droit
             const p = { x: obj.x + obj.r, y: obj.y };
             if (worldX >= p.x - s && worldX <= p.x + s && worldY >= p.y - s && worldY <= p.y + s) {
                 return 'radius';
@@ -135,7 +145,6 @@ export class LudexaEngine {
         return null;
     }
 
-    // MISE À JOUR : Redimensionnement géré pour le cercle et le texte
     resizeObject(obj, handle, worldPos) {
         const minSize = 15;
         
@@ -145,7 +154,6 @@ export class LudexaEngine {
         }
 
         if (obj.type === 'text') {
-            // Pour le texte, changer la taille simule un changement de taille de police
             if (handle === 'br' || handle === 'tr') {
                 obj.fontSize = Math.max(10, Math.round(worldPos.y - obj.y));
             }
@@ -216,13 +224,31 @@ export class LudexaEngine {
                     this.ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
                 }
             } else if (obj.type === 'circle') {
-                this.ctx.fillStyle = obj.color;
-                this.ctx.beginPath();
-                this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
-                this.ctx.fill();
+                const asset = this.am.getAsset(obj.assetId);
+                if (asset && asset.img && asset.img.complete) {
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
+                    this.ctx.clip(); // Découpe en forme de rond parfait
+                    const diameter = obj.r * 2;
+                    this.ctx.drawImage(asset.img, obj.x - obj.r, obj.y - obj.r, diameter, diameter);
+                    this.ctx.restore();
+                } else {
+                    this.ctx.fillStyle = obj.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
             } else if (obj.type === 'button') {
-                this.ctx.fillStyle = obj.color;
-                this.ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                const asset = this.am.getAsset(obj.assetId);
+                if (asset && asset.img && asset.img.complete) {
+                    this.ctx.drawImage(asset.img, obj.x, obj.y, obj.w, obj.h);
+                } else {
+                    this.ctx.fillStyle = obj.color;
+                    this.ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                }
+                
+                // Le texte s'affiche toujours par-dessus l'image ou la couleur de fond
                 this.ctx.fillStyle = obj.textColor || '#ffffff';
                 this.ctx.font = `${obj.fontSize || 16}px sans-serif`;
                 this.ctx.textAlign = 'center';
@@ -252,11 +278,9 @@ export class LudexaEngine {
                     this.ctx.beginPath();
                     this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
                     this.ctx.stroke();
-                    // Dessiner la poignée de rayon unique à droite du cercle
                     this.ctx.fillRect(obj.x + obj.r - s/2, obj.y - s/2, s, s);
                 } else if (obj.type === 'text') {
                     this.ctx.strokeRect(obj.x - 4, obj.y - 4, 140, 32);
-                    // Poignées aux 4 coins du texte
                     const hPoints = [
                         {x: obj.x - 4, y: obj.y - 4}, {x: obj.x + 136, y: obj.y - 4},
                         {x: obj.x - 4, y: obj.y + 28}, {x: obj.x + 136, y: obj.y + 28}
