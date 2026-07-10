@@ -25,7 +25,7 @@ export class LudexaEngine {
         this.draggedObject = null;
         this.dragOffset = { x: 0, y: 0 };
         this.activeHandle = null; 
-        this.handleSize = 24; // Augmenté à 24 pour que ce soit encore plus facile à viser avec le doigt !
+        this.handleSize = 24; 
 
         this.resizeCanvas();
         window.addEventListener('resize', () => { this.resizeCanvas(); this.render(); });
@@ -48,7 +48,6 @@ export class LudexaEngine {
     updateInspector() { this.ui.updateInspector(); }
     updateAssetsUI() { this.ui.updateAssetsUI(); }
 
-    // CORRECTION ICI : "top" devient bien "rect.top" pour que le clic au doigt tombe pile au bon endroit
     screenToWorld(screenX, screenY) {
         const rect = this.canvas.getBoundingClientRect();
         const canvasX = screenX - rect.left;
@@ -105,27 +104,54 @@ export class LudexaEngine {
         });
     }
 
+    // MISE À JOUR : Détection des poignées étendue à tous les types d'objets
     getHitHandle(obj, worldX, worldY) {
-        if (!obj || (obj.type !== 'rect' && obj.type !== 'button')) return null;
+        if (!obj) return null;
         const s = this.handleSize / this.zoom;
         
-        const handles = {
-            tl: { x: obj.x, y: obj.y },
-            tr: { x: obj.x + obj.w, y: obj.y },
-            bl: { x: obj.x, y: obj.y + obj.h },
-            br: { x: obj.x + obj.w, y: obj.y + obj.h }
-        };
+        if (obj.type === 'rect' || obj.type === 'button' || obj.type === 'text') {
+            const width = obj.type === 'text' ? 140 : obj.w;
+            const height = obj.type === 'text' ? 32 : obj.h;
+            
+            const handles = {
+                tl: { x: obj.x, y: obj.y },
+                tr: { x: obj.x + width, y: obj.y },
+                bl: { x: obj.x, y: obj.y + height },
+                br: { x: obj.x + width, y: obj.y + height }
+            };
 
-        for (const [name, p] of Object.entries(handles)) {
+            for (const [name, p] of Object.entries(handles)) {
+                if (worldX >= p.x - s && worldX <= p.x + s && worldY >= p.y - s && worldY <= p.y + s) {
+                    return name;
+                }
+            }
+        } else if (obj.type === 'circle') {
+            // Pour le cercle, on met une poignée unique "radius" sur son bord droit
+            const p = { x: obj.x + obj.r, y: obj.y };
             if (worldX >= p.x - s && worldX <= p.x + s && worldY >= p.y - s && worldY <= p.y + s) {
-                return name;
+                return 'radius';
             }
         }
         return null;
     }
 
+    // MISE À JOUR : Redimensionnement géré pour le cercle et le texte
     resizeObject(obj, handle, worldPos) {
         const minSize = 15;
+        
+        if (handle === 'radius' && obj.type === 'circle') {
+            obj.r = Math.max(minSize, Math.round(worldPos.x - obj.x));
+            return;
+        }
+
+        if (obj.type === 'text') {
+            // Pour le texte, changer la taille simule un changement de taille de police
+            if (handle === 'br' || handle === 'tr') {
+                obj.fontSize = Math.max(10, Math.round(worldPos.y - obj.y));
+            }
+            return;
+        }
+
         if (handle === 'br') {
             obj.w = Math.max(minSize, Math.round(worldPos.x - obj.x));
             obj.h = Math.max(minSize, Math.round(worldPos.y - obj.y));
@@ -212,11 +238,11 @@ export class LudexaEngine {
             if (obj.id === this.selectedObjectId) {
                 this.ctx.strokeStyle = '#6366f1';
                 this.ctx.lineWidth = 2 / this.zoom;
+                this.ctx.fillStyle = '#ffffff';
+                const s = this.handleSize / this.zoom;
                 
                 if (obj.type === 'rect' || obj.type === 'button') {
                     this.ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-                    this.ctx.fillStyle = '#ffffff';
-                    const s = this.handleSize / this.zoom;
                     const hPoints = [
                         {x: obj.x, y: obj.y}, {x: obj.x + obj.w, y: obj.y},
                         {x: obj.x, y: obj.y + obj.h}, {x: obj.x + obj.w, y: obj.y + obj.h}
@@ -224,10 +250,18 @@ export class LudexaEngine {
                     hPoints.forEach(p => this.ctx.fillRect(p.x - s/2, p.y - s/2, s, s));
                 } else if (obj.type === 'circle') {
                     this.ctx.beginPath();
-                    this.ctx.arc(obj.x, obj.y, obj.r + 2, 0, Math.PI * 2);
+                    this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
                     this.ctx.stroke();
+                    // Dessiner la poignée de rayon unique à droite du cercle
+                    this.ctx.fillRect(obj.x + obj.r - s/2, obj.y - s/2, s, s);
                 } else if (obj.type === 'text') {
                     this.ctx.strokeRect(obj.x - 4, obj.y - 4, 140, 32);
+                    // Poignées aux 4 coins du texte
+                    const hPoints = [
+                        {x: obj.x - 4, y: obj.y - 4}, {x: obj.x + 136, y: obj.y - 4},
+                        {x: obj.x - 4, y: obj.y + 28}, {x: obj.x + 136, y: obj.y + 28}
+                    ];
+                    hPoints.forEach(p => this.ctx.fillRect(p.x - s/2, p.y - s/2, s, s));
                 }
             }
             this.ctx.restore();
