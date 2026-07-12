@@ -45,8 +45,15 @@ jobs:
           cordova platform add android
           cordova build android --release -- --packageType=apk
       
+      - name: Sign APK
+        run: |
+          cd myapp/platforms/android/app/build/outputs/apk/release/
+          keytool -genkey -v -keystore ludexa.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias ludexa -storepass "ludexa12345" -keypass "ludexa12345" -dname "CN=Ludexa,OU=Dev,O=Ludexa,L=Spain,ST=Spain,C=ES" 2>/dev/null || true
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore ludexa.keystore -storepass "ludexa12345" -keypass "ludexa12345" app-release-unsigned.apk ludexa
+          mv app-release-unsigned.apk app-release-signed.apk
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Ludexa
-          path: myapp/platforms/android/app/build/outputs/apk/release/
+          path: myapp/platforms/android/app/build/outputs/apk/release/app-release-signed.apk
