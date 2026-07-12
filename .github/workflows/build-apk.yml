@@ -57,22 +57,30 @@ jobs:
       - name: Build Release APK
         run: |
           cd app
-          cordova build android --release -- --packageType=apk
+          cordova build android --release
       
-      - name: List Generated Files
-        run: find app/platforms/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
+      - name: Find APK
+        run: find app/platforms/android -name "*.apk" -type f
+      
+      - name: Sign APK with jarsigner
+        run: |
+          cd app/platforms/android/app/build/outputs/apk/release/
+          keytool -genkey -v -keystore ludexa.keystore -keyalg RSA -keysize 2048 -validity 365 -alias ludexa -storepass "ludexa123" -keypass "ludexa123" -dname "CN=Ludexa,OU=Dev,O=Ludexa,L=Spain,ST=Spain,C=ES"
+          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ludexa.keystore -storepass "ludexa123" -keypass "ludexa123" app-release-unsigned.apk ludexa
+          mv app-release-unsigned.apk app-release.apk
+          cd /home/runner/work/Ludexa/Ludexa
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ludexa-apk
-          path: app/platforms/android/app/build/outputs/
+          path: app/platforms/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: app/platforms/android/app/build/outputs/apk/release/*.apk
+          files: app/platforms/android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
