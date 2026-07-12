@@ -1,0 +1,21 @@
+# Cordova build files
+cordova-build/
+node_modules/
+platforms/
+plugins/
+
+# APK files
+*.apk
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
