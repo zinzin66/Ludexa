@@ -30,10 +30,10 @@ jobs:
         with:
           accept-android-sdk-licenses: true
       
-      - name: Install dependencies
+      - name: Install Cordova
         run: npm install -g cordova
       
-      - name: Create and build app
+      - name: Create app
         run: |
           cordova create myapp com.ludexa.ludexa Ludexa
           cd myapp
@@ -42,18 +42,34 @@ jobs:
           cp ../index.html www/
           cp ../*.js www/ 2>/dev/null || true
           cp ../*.css www/ 2>/dev/null || true
-          cordova platform add android
+      
+      - name: Update config for Android 16
+        run: |
+          cd myapp
+          sed -i '/<platform name="android">/a\        <preference name="android:targetSdkVersion" value="35" />\n        <preference name="android:minSdkVersion" value="24" />' config.xml
+      
+      - name: Add Android platform
+        run: |
+          cd myapp
+          cordova platform add android@latest
+      
+      - name: Build APK
+        run: |
+          cd myapp
           cordova build android --release -- --packageType=apk
+      
+      - name: Find APK
+        run: find myapp -name "app-release*.apk" -type f
       
       - name: Sign APK
         run: |
           cd myapp/platforms/android/app/build/outputs/apk/release/
-          keytool -genkey -v -keystore ludexa.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias ludexa -storepass "ludexa12345" -keypass "ludexa12345" -dname "CN=Ludexa,OU=Dev,O=Ludexa,L=Spain,ST=Spain,C=ES" 2>/dev/null || true
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore ludexa.keystore -storepass "ludexa12345" -keypass "ludexa12345" app-release-unsigned.apk ludexa
+          keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias mykey -storepass "password123" -keypass "password123" -dname "CN=Ludexa" 2>/dev/null || true
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore my.keystore -storepass "password123" -keypass "password123" app-release-unsigned.apk mykey
           mv app-release-unsigned.apk app-release-signed.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ludexa
+          name: Ludexa-APK
           path: myapp/platforms/android/app/build/outputs/apk/release/app-release-signed.apk
