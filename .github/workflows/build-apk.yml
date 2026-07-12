@@ -57,7 +57,7 @@ jobs:
       - name: Build Release APK
         run: |
           cd app
-          cordova build android --release
+          cordova build android --release -- --packageType=apk
       
       - name: List Generated Files
         run: find app/platforms/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
