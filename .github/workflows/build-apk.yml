@@ -43,10 +43,10 @@ jobs:
           cp ../*.js www/ 2>/dev/null || true
           cp ../*.css www/ 2>/dev/null || true
           cordova platform add android
-          cordova build android --release
+          cordova build android --release -- --packageType=apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Ludexa
-          path: myapp/platforms/android/app/build/outputs/apk/
+          path: myapp/platforms/android/app/build/outputs/apk/release/
