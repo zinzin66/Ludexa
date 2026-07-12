@@ -32,52 +32,47 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: true
       
-      - name: Install Cordova
-        run: npm install -g cordova
+      - name: Install Cordova CLI
+        run: npm install -g cordova@latest
       
-      - name: Create Cordova project structure
-        run: |
-          mkdir -p cordova-build
-          cd cordova-build
-          cordova create . com.ludexa.ludexa Ludexa
-          cd ..
+      - name: Create Cordova App
+        run: cordova create app com.ludexa.ludexa Ludexa
       
       - name: Copy config.xml
-        run: cp config.xml cordova-build/config.xml
+        run: cp config.xml app/config.xml
       
-      - name: Copy app files
+      - name: Copy Web Files
         run: |
-          rm -rf cordova-build/www/*
-          cp index.html cordova-build/www/
-          cp *.js cordova-build/www/
-          cp *.css cordova-build/www/
+          rm -rf app/www/*
+          cp index.html app/www/
+          cp *.js app/www/ 2>/dev/null || true
+          cp *.css app/www/ 2>/dev/null || true
       
-      - name: Add Android platform
+      - name: Add Android Platform
         run: |
-          cd cordova-build
-          cordova platform add android@latest
+          cd app
+          cordova platform add android --save
       
-      - name: Build APK (release)
+      - name: Build Release APK
         run: |
-          cd cordova-build
-          cordova build android --release --verbose
+          cd app
+          cordova build android --release
       
-      - name: Find APK files
-        run: find cordova-build -name "*.apk" -type f
+      - name: List Generated Files
+        run: find app/platforms/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
       
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ludexa-apk
-          path: cordova-build/platforms/android/app/build/outputs/apk/
+          path: app/platforms/android/app/build/outputs/
           retention-days: 30
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: cordova-build/platforms/android/app/build/outputs/apk/**/*.apk
+          files: app/platforms/android/app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
