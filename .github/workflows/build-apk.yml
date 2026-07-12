@@ -64,12 +64,7 @@ jobs:
           cd cordova-build
           cordova build android --release
       
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ludexa-apk
-          path: cordova-build/platforms/android/app/build/outputs/apk/release/
-          retention-days: 30
+      5
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
