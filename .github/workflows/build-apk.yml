@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -31,8 +31,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-levels: 24,34
-          build-tools: 34.0.0
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
       
       - name: Install Cordova
         run: npm install -g cordova
