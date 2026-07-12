@@ -1,0 +1,80 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-levels: 24,34
+          build-tools: 34.0.0
+      
+      - name: Install Cordova
+        run: npm install -g cordova
+      
+      - name: Create Cordova project structure
+        run: |
+          mkdir -p cordova-build
+          cd cordova-build
+          cordova create . com.ludexa.ludexa Ludexa
+          cd ..
+      
+      - name: Copy config.xml
+        run: cp config.xml cordova-build/config.xml
+      
+      - name: Copy app files
+        run: |
+          rm -rf cordova-build/www/*
+          cp index.html cordova-build/www/
+          cp *.js cordova-build/www/
+          cp *.css cordova-build/www/
+      
+      - name: Add Android platform
+        run: |
+          cd cordova-build
+          cordova platform add android@latest
+      
+      - name: Build APK (release)
+        run: |
+          cd cordova-build
+          cordova build android --release
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludexa-apk
+          path: cordova-build/platforms/android/app/build/outputs/apk/release/
+          retention-days: 30
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cordova-build/platforms/android/app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
