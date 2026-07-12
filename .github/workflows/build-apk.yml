@@ -64,12 +64,20 @@ jobs:
           cd cordova-build
           cordova build android --release
       
-      5
+      - name: Find APK files
+        run: find cordova-build -name "*.apk" -type f
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludexa-apk
+          path: cordova-build/platforms/android/app/build/outputs/apk/
+          retention-days: 30
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: cordova-build/platforms/android/app/build/outputs/apk/release/*.apk
+          files: cordova-build/platforms/android/app/build/outputs/apk/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
