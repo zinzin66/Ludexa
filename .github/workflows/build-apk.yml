@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -33,46 +30,23 @@ jobs:
         with:
           accept-android-sdk-licenses: true
       
-      - name: Install Cordova CLI
-        run: npm install -g cordova@latest
+      - name: Install dependencies
+        run: npm install -g cordova
       
-      - name: Create Cordova App
-        run: cordova create app com.ludexa.ludexa Ludexa
-      
-      - name: Copy config.xml
-        run: cp config.xml app/config.xml
-      
-      - name: Copy Web Files
+      - name: Create and build app
         run: |
-          rm -rf app/www/*
-          cp index.html app/www/
-          cp *.js app/www/ 2>/dev/null || true
-          cp *.css app/www/ 2>/dev/null || true
-      
-      - name: Add Android Platform
-        run: |
-          cd app
-          cordova platform add android --save
-      
-      - name: Build with Gradle (APK only)
-        run: |
-          cd app/platforms/android
-          ./gradlew assembleRelease
-      
-      - name: Find all APK files
-        run: find app -name "*.apk" -type f
+          cordova create myapp com.ludexa.ludexa Ludexa
+          cd myapp
+          cp ../config.xml .
+          rm -rf www/*
+          cp ../index.html www/
+          cp ../*.js www/ 2>/dev/null || true
+          cp ../*.css www/ 2>/dev/null || true
+          cordova platform add android
+          cordova build android --release
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ludexa-apk
-          path: app/platforms/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
-      
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: app/platforms/android/app/build/outputs/apk/release/app-release.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: Ludexa
+          path: myapp/platforms/android/app/build/outputs/apk/
