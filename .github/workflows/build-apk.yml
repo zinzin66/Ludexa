@@ -62,7 +62,7 @@ jobs:
       - name: Build APK (release)
         run: |
           cd cordova-build
-          cordova build android --release
+          cordova build android --release -- --packageType=apk
       
       - name: Find APK files
         run: find cordova-build -name "*.apk" -type f
