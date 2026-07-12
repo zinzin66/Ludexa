@@ -54,21 +54,13 @@ jobs:
           cd app
           cordova platform add android --save
       
-      - name: Build Release APK
+      - name: Build with Gradle (APK only)
         run: |
-          cd app
-          cordova build android --release
+          cd app/platforms/android
+          ./gradlew assembleRelease
       
-      - name: Find APK
-        run: find app/platforms/android -name "*.apk" -type f
-      
-      - name: Sign APK with jarsigner
-        run: |
-          cd app/platforms/android/app/build/outputs/apk/release/
-          keytool -genkey -v -keystore ludexa.keystore -keyalg RSA -keysize 2048 -validity 365 -alias ludexa -storepass "ludexa123" -keypass "ludexa123" -dname "CN=Ludexa,OU=Dev,O=Ludexa,L=Spain,ST=Spain,C=ES"
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ludexa.keystore -storepass "ludexa123" -keypass "ludexa123" app-release-unsigned.apk ludexa
-          mv app-release-unsigned.apk app-release.apk
-          cd /home/runner/work/Ludexa/Ludexa
+      - name: Find all APK files
+        run: find app -name "*.apk" -type f
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
