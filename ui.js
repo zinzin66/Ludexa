@@ -176,6 +176,22 @@ export class UIManager {
 
         this.updateAssetsUI();
         this.updateTreeview();
+
+        // --- CORRECTION APPEL DYNAMIQUE BLUEPRINT ---
+        document.getElementById('btn-open-blueprint')?.addEventListener('click', () => {
+            if (window.ludexaBlueprint && typeof window.ludexaBlueprint.open === 'function') {
+                window.ludexaBlueprint.open();
+            } else {
+                // Si l'initialisation a pris du retard, on force une tentative de secours
+                const modal = document.getElementById('blueprint-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    console.log("Ouverture forcée via fallback DOM.");
+                } else {
+                    console.error("Impossible de trouver la fenêtre modale Blueprint.");
+                }
+            }
+        });
     }
 
     rebuildSceneSelector() {
@@ -302,9 +318,6 @@ export class UIManager {
 
         document.getElementById('prop-asset')?.addEventListener('change', (e) => {
             obj.assetId = e.target.value; 
-            this.updateTreeview(); 
-            this.e.render();
-        });
-    }
-}
-
+        e', (e) => {
+            obj.assetId = e.target.value; 
+            this.updat

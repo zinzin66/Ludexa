@@ -50,6 +50,8 @@
             <button id="btn-export-project" title="Exporter le projet" style="background: #2ed573; color: #fff; border: none;">💾 Exporter</button>
             <button id="btn-close-project" title="Quitter le projet">❌ Quitter</button>
             <span style="color: var(--border-color); margin: 0 4px;">|</span>
+            <button id="btn-open-blueprint" title="Éditeur de Scripts" style="background: #3b82f6; color: #fff; border: none;">🧩 Scripts (Blueprint)</button>
+            <span style="color: var(--border-color); margin: 0 4px;">|</span>
             <button id="btn-tool-hand" title="Outil Main (Pan)">🖐️</button>
             <button id="btn-toggle-grid" class="active" title="Grille">🌐 Grille</button>
             <button id="btn-zoom-out">-</button>
@@ -118,7 +120,21 @@
         </div>
     </div>
 
+    <!-- MODAL DU SCRIPT VISUEL BLUEPRINT (ISOLÉ) -->
+    <div id="blueprint-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e1e24; z-index: 20000; flex-direction: column;">
+        <header style="height: 48px; background: #141419; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #2d2d35; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px; color: #fff; font-weight: bold; font-family: sans-serif;">
+                <span>🧩 Éditeur de Scripts Blueprint</span>
+            </div>
+            <button id="btn-close-blueprint" style="background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif;">Fermer & Appliquer</button>
+        </header>
+        <div style="flex: 1; position: relative; overflow: hidden;">
+            <canvas id="blueprint-canvas" style="display: block; width: 100%; height: 100%; cursor: grab;"></canvas>
+        </div>
+    </div>
+
+    <!-- ⭐ IMPORTANT : Charger blueprint.js AVANT main.js ⭐ -->
+    <script src="blueprint.js"></script>
     <script type="module" src="main.js"></script>
 </body>
 </html>
-
