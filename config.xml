@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.ludexa.ludexa" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Ludexa</name>
+    <description>
+        Game engine for Android - Visual scripting 2D game editor
+    </description>
+    <author email="contact@ludexa.dev" href="https://github.com/zinzin66/Ludexa">
+        Domi
+    </author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+    <platform name="android">
+        <allow-intent href="market:*" />
+        <preference name="Orientation" value="portrait" />
+        <preference name="Fullscreen" value="false" />
+        <preference name="StatusBarBackgroundColor" value="#ffffff" />
+        <preference name="StatusBarStyle" value="default" />
+    </platform>
+    <preference name="loglevel" value="LOG" />
+    <preference name="AndroidLaunchMode" value="singleTop" />
+</widget>
