@@ -1,26 +1,29 @@
+// debut 1
 export class StorageManager {
     constructor(engine) {
         this.e = engine;
     }
 
-    // Convertit les scènes et objets en texte JSON et force le téléchargement
     exportProject() {
-        // Sécurité : Si projectName n'existe pas ou est vide, on donne un nom par défaut
         const name = this.e.projectName || `ludexa_projet_${Date.now()}`;
 
-        // Vérification que le gestionnaire de scènes existe avant d'exporter
         if (!this.e.sm) {
             console.error("Erreur d'exportation : Le SceneManager (sm) n'est pas initialisé.");
             alert("Impossible d'exporter : le gestionnaire de scènes est manquant.");
             return;
         }
 
+        // CORRECTION : Suppression de la synchronisation agressive ici
+
         const projectData = {
-            version: "1.0",
+            version: "1.2", 
             timestamp: Date.now(),
             projectName: name,
             scenes: this.e.sm.scenes,
-            currentSceneId: this.e.sm.currentSceneId
+            currentSceneId: this.e.sm.currentSceneId,
+            variables: this.e.variables || [],
+            assets: this.e.am && typeof this.e.am.getAllAssets === 'function' ? this.e.am.getAllAssets() : [],
+            scripts: this.e.scripts || {} 
         };
 
         try {
@@ -31,14 +34,15 @@ export class StorageManager {
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
-            console.log("Projet exporté avec succès !");
+            console.log("Projet (Scènes, Assets, Variables, Scripts) exporté avec succès !");
         } catch (error) {
             console.error("Erreur technique lors de la génération du JSON :", error);
             alert("Une erreur est survenue lors de l'exportation.");
         }
     }
+// fin 1
 
-    // Lit un fichier JSON et reconstruit l'état du moteur
+// debut 2
     importProject(file, callback) {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -46,11 +50,47 @@ export class StorageManager {
                 const projectData = JSON.parse(event.target.result);
                 
                 if (projectData && projectData.scenes) {
-                    // On réinjecte les données chargées dans le moteur
+                    
+                    // 1. Restauration des Scènes et du Projet
                     this.e.sm.scenes = projectData.scenes;
                     this.e.sm.currentSceneId = projectData.currentSceneId || Object.keys(projectData.scenes)[0];
                     this.e.projectName = projectData.projectName || "ludexa_projet";
                     this.e.selectedObjectId = null;
+                    
+                    // 2. Restauration des Variables
+                    this.e.variables = projectData.variables || [];
+                    this.e.gameVariables = {}; 
+                    
+                    // 3. Restauration des Scripts (Multi-Scripts)
+                    this.e.scripts = projectData.scripts || {};
+                    
+                    // Rétrocompatibilité : si l'ancien fichier utilisait "blueprint", on l'assigne à la scene1
+                    if (projectData.blueprint && Object.keys(this.e.scripts).length === 0) {
+                        this.e.scripts['scene1'] = {
+                            nodes: projectData.blueprint.nodes || [],
+                            connections: projectData.blueprint.connections || []
+                        };
+                    }
+
+                    // On pousse le script de la scène courante dans l'éditeur visuel
+                    if (window.ludexaBlueprint) {
+                        const currentScript = this.e.scripts[this.e.sm.currentSceneId] || { nodes: [], connections: [] };
+                        window.ludexaBlueprint.nodes = JSON.parse(JSON.stringify(currentScript.nodes));
+                        window.ludexaBlueprint.connections = JSON.parse(JSON.stringify(currentScript.connections));
+                        if (typeof window.ludexaBlueprint.draw === 'function') window.ludexaBlueprint.draw();
+                    }
+
+                    // 4. Restauration des Assets (Fichiers)
+                    if (this.e.am && projectData.assets) {
+                        this.e.am.assets = []; 
+                        projectData.assets.forEach(savedAsset => {
+                            if (savedAsset.type === 'image') {
+                                savedAsset.img = new Image();
+                                savedAsset.img.src = savedAsset.url; 
+                            }
+                            this.e.am.assets.push(savedAsset); 
+                        });
+                    }
                     
                     console.log("Projet importé avec succès !");
                     if (callback) callback(true);
@@ -67,4 +107,5 @@ export class StorageManager {
         reader.readAsText(file);
     }
 }
+// fin 2
 

@@ -1,6 +1,7 @@
+// debut 1
 import { SceneManager } from './scenes.js';
 import { AssetManager } from './assets.js';
-import { StorageManager } from './storage.js'; // Indispensable pour la communication interne
+import { StorageManager } from './storage.js'; 
 
 export class UIManager {
     constructor(engine) {
@@ -11,18 +12,21 @@ export class UIManager {
         const startScreen = document.getElementById('start-screen');
         const selectScene = document.getElementById('select-scene');
 
-        // GESTION DE LA PAGE DE DÉMARRAGE
         document.getElementById('btn-new-project')?.addEventListener('click', () => {
             this.e.clearProject();
-            this.e.projectName = "ludexa_projet"; // Réinitialise le nom par défaut
+            this.e.projectName = "ludexa_projet"; 
+            this.e.variables = []; 
+            if (this.e.am) this.e.am.assets = [];
+            if (window.ludexaBlueprint) { window.ludexaBlueprint.nodes = []; window.ludexaBlueprint.connections = []; }
             this.rebuildSceneSelector();
             if (startScreen) startScreen.style.display = 'none';
             this.updateTreeview();
             this.updateInspector();
+            this.updateVariablesUI();
+            this.updateAssetsUI();
             this.e.render();
         });
 
-        // IMPORTATION DIRECTE DEPUIS L'ÉLÉMENT HTML
         document.getElementById('input-import-project')?.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -32,13 +36,14 @@ export class UIManager {
                     if (startScreen) startScreen.style.display = 'none';
                     this.updateTreeview();
                     this.updateInspector();
+                    this.updateVariablesUI();
+                    this.updateAssetsUI(); 
                     this.e.render();
                 }
-                event.target.value = ''; // Reset l'input
+                event.target.value = ''; 
             });
         });
 
-        // EXPORTATION DU PROJET
         document.getElementById('btn-export-project')?.addEventListener('click', () => {
             this.e.storage.exportProject();
         });
@@ -48,8 +53,8 @@ export class UIManager {
                 if (startScreen) startScreen.style.display = 'flex';
             }
         });
-
-        // RESTE DES ÉLÉMENTS DE L'ÉDITEUR
+// fin 1
+// debut 2
         document.getElementById('btn-toggle-sidebar')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('hidden');
         });
@@ -67,14 +72,19 @@ export class UIManager {
                 this.e.selectedObjectId = null;
                 this.updateTreeview();
                 this.updateInspector();
+                this.updateVariablesUI(); 
                 this.e.render();
             });
         }
 
+        // MULTI-SCRIPTS : Création d'un script vierge lors de l'ajout d'une scène
         document.getElementById('btn-add-scene')?.addEventListener('click', () => {
             const count = Object.keys(this.e.sm.scenes).length + 1;
             const newId = `scene${count}`;
             this.e.sm.addScene(newId);
+            
+            if (!this.e.scripts) this.e.scripts = {};
+            this.e.scripts[newId] = { nodes: [], connections: [] };
             
             if (selectScene) {
                 const option = document.createElement('option');
@@ -87,25 +97,28 @@ export class UIManager {
             this.e.selectedObjectId = null;
             this.updateTreeview(); 
             this.updateInspector(); 
+            this.updateVariablesUI();
             this.e.render();
         });
 
+        // MULTI-SCRIPTS : Suppression du script correspondant avec la scène
         document.getElementById('btn-remove-scene')?.addEventListener('click', () => {
             if (!selectScene) return;
-            const currentOption = selectScene.querySelector(`option[value="${this.e.sm.currentSceneId}"]`);
+            const sceneIdToRemove = this.e.sm.currentSceneId;
+            const currentOption = selectScene.querySelector(`option[value="${sceneIdToRemove}"]`);
             if (!currentOption) return;
-            if (Object.keys(this.e.sm.scenes).length <= 1) {
-                alert("Impossible de supprimer la dernière scène restante.");
-                return;
-            }
+            if (Object.keys(this.e.sm.scenes).length <= 1) { alert("Impossible de supprimer la dernière scène restante."); return; }
             if (!confirm(`Supprimer la "${currentOption.textContent}" ?`)) return;
 
-            if (this.e.sm.removeScene(this.e.sm.currentSceneId)) {
+            if (this.e.sm.removeScene(sceneIdToRemove)) {
+                if (this.e.scripts) delete this.e.scripts[sceneIdToRemove];
+                
                 currentOption.remove(); 
                 selectScene.value = this.e.sm.currentSceneId;
                 this.e.selectedObjectId = null; 
                 this.updateTreeview(); 
                 this.updateInspector(); 
+                this.updateVariablesUI();
                 this.e.render();
             }
         });
@@ -114,11 +127,8 @@ export class UIManager {
             if (!selectScene) return;
             const currentOption = selectScene.querySelector(`option[value="${this.e.sm.currentSceneId}"]`);
             if (!currentOption) return;
-            
             const newName = prompt("Entrez le nouveau nom de la scène :", currentOption.textContent);
-            if (newName && newName.trim() !== "") {
-                currentOption.textContent = newName.trim();
-            }
+            if (newName && newName.trim() !== "") currentOption.textContent = newName.trim();
         });
 
         const btnHand = document.getElementById('btn-tool-hand');
@@ -150,13 +160,18 @@ export class UIManager {
                 const file = e.target.files[0]; 
                 if (!file) return;
                 const type = file.type.startsWith('audio/') ? 'audio' : 'image';
-                this.e.am.addAsset(file.name, type, URL.createObjectURL(file));
-                this.updateAssetsUI();
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    this.e.am.addAsset(file.name, type, event.target.result);
+                    this.updateAssetsUI();
+                };
+                reader.readAsDataURL(file);
             });
             fileInput.click();
         });
-
-        // CONFIGURATION PARAMÈTRES DU PROJET
+// fin 2
+// debut 3
         this.e.projectName = "ludexa_projet";
         const settingsModal = document.getElementById('project-settings-modal');
         const inputProjectName = document.getElementById('input-project-name');
@@ -174,22 +189,56 @@ export class UIManager {
             this.e.projectName = e.target.value.trim() || "ludexa_projet";
         });
 
+        if (!this.e.variables) this.e.variables = [];
+        const varModal = document.getElementById('variable-settings-modal');
+
+        document.getElementById('btn-add-variable')?.addEventListener('click', () => {
+            document.getElementById('input-var-name').value = '';
+            document.getElementById('input-var-value').value = '0';
+            document.getElementById('select-var-scope').value = 'global';
+            if (varModal) varModal.style.display = 'flex';
+        });
+
+        document.getElementById('btn-cancel-variable')?.addEventListener('click', () => {
+            if (varModal) varModal.style.display = 'none';
+        });
+
+        document.getElementById('btn-save-variable')?.addEventListener('click', () => {
+            const name = document.getElementById('input-var-name').value.trim();
+            const value = document.getElementById('input-var-value').value.trim();
+            const scope = document.getElementById('select-var-scope').value;
+
+            if (!name) { alert("Le nom de la variable est obligatoire."); return; }
+            if (name.includes(' ')) { alert("Le nom ne doit pas contenir d'espaces."); return; }
+
+            const existing = this.e.variables.find(v => v.name === name);
+            if (existing) {
+                existing.value = value;
+                existing.scope = scope;
+                if (scope === 'scene') existing.sceneId = this.e.sm.currentSceneId;
+            } else {
+                this.e.variables.push({
+                    name,
+                    value,
+                    scope,
+                    sceneId: scope === 'scene' ? this.e.sm.currentSceneId : null
+                });
+            }
+            
+            this.updateVariablesUI();
+            if (varModal) varModal.style.display = 'none';
+        });
+
         this.updateAssetsUI();
         this.updateTreeview();
+        this.updateVariablesUI();
 
-        // --- CORRECTION APPEL DYNAMIQUE BLUEPRINT ---
         document.getElementById('btn-open-blueprint')?.addEventListener('click', () => {
             if (window.ludexaBlueprint && typeof window.ludexaBlueprint.open === 'function') {
                 window.ludexaBlueprint.open();
             } else {
-                // Si l'initialisation a pris du retard, on force une tentative de secours
                 const modal = document.getElementById('blueprint-modal');
-                if (modal) {
-                    modal.style.display = 'flex';
-                    console.log("Ouverture forcée via fallback DOM.");
-                } else {
-                    console.error("Impossible de trouver la fenêtre modale Blueprint.");
-                }
+                if (modal) modal.style.display = 'flex';
             }
         });
     }
@@ -206,7 +255,8 @@ export class UIManager {
         });
         selectScene.value = this.e.sm?.currentSceneId || Object.keys(this.e.sm.scenes)[0];
     }
-
+// fin 3
+// debut 4
     updateTreeview() {
         const tree = document.getElementById('treeview'); 
         if (!tree) return;
@@ -249,6 +299,38 @@ export class UIManager {
                     this.updateAssetsUI(); 
                     this.updateInspector(); 
                     this.e.render();
+                }
+            });
+            item.appendChild(delBtn); 
+            container.appendChild(item);
+        });
+    }
+
+    updateVariablesUI() {
+        const container = document.getElementById('variables-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (!this.e.variables) return;
+
+        this.e.variables.forEach((v, index) => {
+            if (v.scope === 'scene' && v.sceneId !== this.e.sm.currentSceneId) return;
+
+            const item = document.createElement('div');
+            const borderColor = v.scope === 'global' ? '#3b82f6' : '#e67e22';
+            item.style = `padding:6px; background-color:var(--bg-panel); border-radius:4px; font-size:12px; display:flex; justify-content:space-between; align-items:center; border-left: 3px solid ${borderColor};`;
+            
+            const scopeIcon = v.scope === 'global' ? '🌍' : '📍';
+            item.innerHTML = `<span title="${v.scope === 'global' ? 'Globale' : 'Locale'}">${scopeIcon} <b>${v.name}</b> = ${v.value}</span>`;
+            
+            const delBtn = document.createElement('span'); 
+            delBtn.textContent = '❌'; 
+            delBtn.style.cursor = 'pointer';
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Supprimer la variable "${v.name}" ?`)) {
+                    this.e.variables.splice(index, 1);
+                    this.updateVariablesUI();
                 }
             });
             item.appendChild(delBtn); 
@@ -323,4 +405,5 @@ export class UIManager {
         });
     }
 }
+// fin 4
 

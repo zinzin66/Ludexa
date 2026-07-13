@@ -1,3 +1,4 @@
+// debut 1
 export class InputManager {
     constructor(engine) {
         this.e = engine;
@@ -8,6 +9,9 @@ export class InputManager {
         const canvas = this.e.canvas;
 
         canvas.addEventListener('pointerdown', (e) => {
+            // --- SÉCURITÉ : On bloque la sélection de l'éditeur si le jeu tourne ---
+            if (this.e.isPlaying) return;
+
             try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
             this.e.isPointerDown = true;
             this.e.lastPointer = { x: e.clientX, y: e.clientY };
@@ -44,6 +48,9 @@ export class InputManager {
         });
 
         canvas.addEventListener('pointermove', (e) => {
+            // --- SÉCURITÉ : On bloque le déplacement de l'éditeur si le jeu tourne ---
+            if (this.e.isPlaying) return;
+
             if (!this.e.isPointerDown) return;
 
             if (this.e.currentTool === 'hand') {
@@ -76,4 +83,5 @@ export class InputManager {
         canvas.addEventListener('pointercancel', handleUp);
     }
 }
+// fin de 1
 
