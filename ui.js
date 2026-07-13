@@ -241,6 +241,92 @@ export class UIManager {
                 if (modal) modal.style.display = 'flex';
             }
         });
+
+        // ==========================================
+        // GESTION DU PLAY, STOP ET BUILD HTML
+        // ==========================================
+        document.getElementById('btn-play-game')?.addEventListener('click', () => {
+            this.e.startPlayMode();
+        });
+
+        document.getElementById('btn-stop-game')?.addEventListener('click', () => {
+            this.e.stopPlayMode();
+        });
+
+        document.getElementById('btn-build-game')?.addEventListener('click', () => {
+            const projectData = {
+                scenes: this.e.sm.scenes,
+                currentSceneId: this.e.sm.currentSceneId,
+                scripts: this.e.scripts,
+                assets: this.e.am.assets,
+                variables: this.e.variables || []
+            };
+
+            const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>${this.e.projectName || "Mon Jeu Ludexa"}</title>
+    <style>
+        body, html { margin:0; padding:0; overflow:hidden; background-color:#14141c; width:100%; height:100%; touch-action:none; }
+        canvas { display:block; width:100%; height:100%; }
+    </style>
+</head>
+<body>
+    <canvas id="editor-canvas"></canvas>
+    
+    <script src="nodes-interpreter.js"></script>
+    <script type="module">
+        import { SceneManager } from './scenes.js';
+        import { AssetManager } from './assets.js';
+        import { InputManager } from './input.js';
+        import { LudexaEngine } from './engine.js';
+        
+        class LudexaPlayer extends LudexaEngine {
+            constructor() {
+                super();
+                this.ui = { init: ()=>{}, updateTreeview: ()=>{}, updateInspector: ()=>{}, updateAssetsUI: ()=>{} };
+                this.storage = { exportProject: ()=>{}, importProject: ()=>{} };
+                this.showGrid = false;
+            }
+            updateTreeview() {}
+            updateInspector() {}
+            updateAssetsUI() {}
+        }
+
+        const engine = new LudexaPlayer();
+        const gameData = ${JSON.stringify(projectData)};
+        
+        engine.sm.scenes = gameData.scenes;
+        engine.sm.currentSceneId = gameData.currentSceneId;
+        engine.scripts = gameData.scripts;
+        engine.am.assets = gameData.assets;
+        engine.variables = gameData.variables;
+        
+        engine.am.assets.forEach(a => {
+            if (a.type === 'image' && a.base64) {
+                const img = new Image();
+                img.src = a.base64;
+                a.img = img;
+            }
+        });
+
+        setTimeout(() => engine.startPlayMode(), 500);
+    </script>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = (this.e.projectName || "jeu_final") + "_build.html";
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert("Build généré avec succès ! Placez simplement ce fichier HTML dans votre dossier Ludexa (à côté de engine.js) pour qu'il soit jouable, ou zippez le tout pour le partager.");
+        });
     }
 
     rebuildSceneSelector() {
@@ -256,6 +342,7 @@ export class UIManager {
         selectScene.value = this.e.sm?.currentSceneId || Object.keys(this.e.sm.scenes)[0];
     }
 // fin 3
+
 // debut 4
     updateTreeview() {
         const tree = document.getElementById('treeview'); 

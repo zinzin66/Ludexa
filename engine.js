@@ -36,6 +36,13 @@ export class LudexaEngine {
         this.scripts = { 'scene1': { nodes: [], connections: [] } };
         this.executingSceneId = null;
         this.gameVariables = {};
+        this.activeCollisions = new Set();
+        this.activeSounds = [];
+        
+        this.cameraX = 0;
+        this.cameraY = 0;
+        this.cameraTarget = null;
+        this.cameraLerp = 1;
         
         this.playTouchX = 0;
         this.playTouchY = 0;
@@ -80,6 +87,14 @@ export class LudexaEngine {
         this.panX = 0;
         this.panY = 0;
         this.zoom = 1;
+        this.activeCollisions = new Set();
+        if (this.activeSounds) {
+            this.activeSounds.forEach(a => { a.pause(); a.currentTime = 0; });
+        }
+        this.activeSounds = [];
+        this.cameraX = 0;
+        this.cameraY = 0;
+        this.cameraTarget = null;
     }
 
     updateTreeview() { this.ui.updateTreeview(); }
@@ -88,6 +103,12 @@ export class LudexaEngine {
 
     screenToWorld(screenX, screenY) {
         const rect = this.canvas.getBoundingClientRect();
+        if (this.isPlaying) {
+            return { 
+                x: (screenX - rect.left) + (this.cameraX || 0), 
+                y: (screenY - rect.top) + (this.cameraY || 0) 
+            };
+        }
         return { 
             x: ((screenX - rect.left) - this.panX) / this.zoom, 
             y: ((screenY - rect.top) - this.panY) / this.zoom 
@@ -129,15 +150,56 @@ export class LudexaEngine {
         const sorted = [...this.objects].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
         return sorted.find(obj => {
             if (!obj.visible) return false;
+            
+            let checkX = worldX;
+            let checkY = worldY;
+            
+            // Les HUD ignorent la caméra, il faut donc compenser leurs coordonnées
+            if (this.isPlaying && obj.isHUD) {
+                checkX -= (this.cameraX || 0);
+                checkY -= (this.cameraY || 0);
+            }
+
             if (obj.type === 'rect' || obj.type === 'button') {
-                return worldX >= obj.x && worldX <= obj.x + obj.w && worldY >= obj.y && worldY <= obj.y + obj.h;
+                return checkX >= obj.x && checkX <= obj.x + obj.w && checkY >= obj.y && checkY <= obj.y + obj.h;
             } else if (obj.type === 'circle') {
-                return Math.hypot(worldX - obj.x, worldY - obj.y) <= obj.r;
+                return Math.hypot(checkX - obj.x, checkY - obj.y) <= obj.r;
             } else if (obj.type === 'text') {
-                return worldX >= obj.x && worldX <= obj.x + 140 && worldY >= obj.y && worldY <= obj.y + 30;
+                return checkX >= obj.x && checkX <= obj.x + 140 && checkY >= obj.y && checkY <= obj.y + 30;
             }
             return false;
         });
+    }
+
+    checkCollision(a, b) {
+        const getBox = (obj) => {
+            if (obj.type === 'circle') return null;
+            const w = obj.type === 'text' ? 140 : (obj.w || 0);
+            const h = obj.type === 'text' ? 30 : (obj.h || 0);
+            return { x: obj.x, y: obj.y, w: w, h: h };
+        };
+
+        const isCircleA = a.type === 'circle';
+        const isCircleB = b.type === 'circle';
+
+        if (!isCircleA && !isCircleB) {
+            const boxA = getBox(a);
+            const boxB = getBox(b);
+            return boxA.x < boxB.x + boxB.w && boxA.x + boxA.w > boxB.x &&
+                   boxA.y < boxB.y + boxB.h && boxA.y + boxA.h > boxB.y;
+        } else if (isCircleA && isCircleB) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            return (dx * dx + dy * dy) < ((a.r + b.r) * (a.r + b.r));
+        } else {
+            const circle = isCircleA ? a : b;
+            const rect = isCircleA ? getBox(b) : getBox(a);
+            const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
+            const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
+            const dx = circle.x - closestX;
+            const dy = circle.y - closestY;
+            return (dx * dx + dy * dy) < (circle.r * circle.r);
+        }
     }
 
     getHitHandle(obj, worldX, worldY) {
@@ -165,13 +227,17 @@ export class LudexaEngine {
         else if (handle === 'tr') { obj.w = Math.max(minSize, Math.round(worldPos.x - obj.x)); const oldBottom = obj.y + obj.h; obj.y = Math.min(oldBottom - minSize, Math.round(worldPos.y)); obj.h = oldBottom - obj.y; } 
         else if (handle === 'tl') { const oldRight = obj.x + obj.w; const oldBottom = obj.y + obj.h; obj.x = Math.min(oldRight - minSize, Math.round(worldPos.x)); obj.y = Math.min(oldBottom - minSize, Math.round(worldPos.y)); obj.w = oldRight - obj.x; obj.h = oldBottom - obj.y; }
     }
-
+// fin 3
+// debut 4
     render() {
         if (!this.ctx) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.panX, this.panY);
-        this.ctx.scale(this.zoom, this.zoom);
+        
+        if (!this.isPlaying) {
+            this.ctx.translate(this.panX, this.panY);
+            this.ctx.scale(this.zoom, this.zoom);
+        }
 
         if (this.showGrid && !this.isPlaying) {
             this.ctx.strokeStyle = '#2a2a38';
@@ -189,8 +255,13 @@ export class LudexaEngine {
         sorted.forEach(obj => {
             if (!obj.visible) return;
             this.ctx.save();
-            this.ctx.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1;
             
+            // La caméra affecte tout SAUF le HUD pendant le jeu
+            if (this.isPlaying && !obj.isHUD) {
+                this.ctx.translate(-(this.cameraX || 0), -(this.cameraY || 0));
+            }
+
+            this.ctx.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1;
             this.ctx.filter = obj.filter || 'none';
 
             if (obj.angle) {
@@ -247,8 +318,8 @@ export class LudexaEngine {
         });
         this.ctx.restore();
     }
-// fin 3
-// debut 4
+// fin 4
+// debut 5
     loadBlueprint(jsonString) {
         try {
             const data = JSON.parse(jsonString);
@@ -258,6 +329,48 @@ export class LudexaEngine {
             console.log("Blueprint chargé pour la scène :", this.sm.currentSceneId);
         } catch (error) {
             console.error("Erreur de chargement du Blueprint :", error);
+        }
+    }
+
+    _triggerCollisionNode(targetObj, hitObj) {
+        const activeScenes = [this.sm.currentSceneId];
+        this.objects.forEach(o => { 
+            if (o.isHUD && o.hudSource && !activeScenes.includes(o.hudSource)) activeScenes.push(o.hudSource); 
+        });
+
+        const prevSceneId = this.executingSceneId;
+        activeScenes.forEach(sceneId => {
+            this.executingSceneId = sceneId;
+            const activeScript = this.scripts[sceneId] || { nodes: [], connections: [] };
+            const colNodes = activeScript.nodes.filter(node => node.title.trim() === "En collision 💥");
+            for (const node of colNodes) {
+                const inConn = activeScript.connections.find(c => c.toNode === node.id && c.toPin.trim() === "Cible");
+                if (inConn) {
+                    const expectedObj = this.evaluateDataNode(inConn.fromNode, inConn.fromPin, {});
+                    if (expectedObj && expectedObj.id === targetObj.id) {
+                        this.executeNextNodes(node, "Suite", { target: targetObj, hitObject: hitObj }, sceneId);
+                    }
+                }
+            }
+        });
+        this.executingSceneId = prevSceneId;
+    }
+
+    playSound(soundName, volume = 1, loop = false) {
+        if (!this.isPlaying) return;
+        const asset = this.am.getAsset(soundName);
+        if (asset && (asset.data || asset.url || asset.base64)) {
+            const src = asset.data || asset.url || asset.base64;
+            const audio = new Audio(src);
+            audio.volume = Math.max(0, Math.min(1, volume));
+            audio.loop = loop;
+            audio.play().catch(e => console.warn("Erreur lecture son :", e));
+            
+            this.activeSounds = this.activeSounds || [];
+            this.activeSounds.push(audio);
+            audio.addEventListener('ended', () => {
+                this.activeSounds = this.activeSounds.filter(a => a !== audio);
+            });
         }
     }
 
@@ -274,9 +387,7 @@ export class LudexaEngine {
         if (clickedObj) {
             const activeScenes = [this.sm.currentSceneId];
             this.objects.forEach(o => { 
-                if (o.isHUD && o.hudSource && !activeScenes.includes(o.hudSource)) {
-                    activeScenes.push(o.hudSource); 
-                }
+                if (o.isHUD && o.hudSource && !activeScenes.includes(o.hudSource)) activeScenes.push(o.hudSource); 
             });
 
             const prevSceneId = this.executingSceneId;
@@ -309,13 +420,19 @@ export class LudexaEngine {
     _playInputHandlerUp(e) { 
         if (this.isPlaying) this.triggerEvent("Relâchement écran 🖱️", { x: e.clientX, y: e.clientY }); 
     }
-
+// fin 5
+// debut 6
     startPlayMode() {
         if (this.isPlaying) return;
         this.isPlaying = true;
         this.selectedObjectId = null; 
         this.draggedGameObjects = []; 
         this.executingSceneId = this.sm.currentSceneId;
+        this.activeCollisions = new Set();
+        this.activeSounds = [];
+        this.cameraX = 0;
+        this.cameraY = 0;
+        this.cameraTarget = null;
         
         this.gameVariables = {}; 
         if (this.variables && Array.isArray(this.variables)) {
@@ -326,12 +443,9 @@ export class LudexaEngine {
         }
         
         this.lastTime = performance.now();
-        
         this.initialScenesBackup = JSON.parse(JSON.stringify(this.sm.scenes));
         this.initialSceneId = this.sm.currentSceneId;
         
-        // CORRECTION : Suppression de la synchronisation agressive ici
-
         this.canvas.addEventListener('pointerdown', this._playInputHandlerDown);
         this.canvas.addEventListener('pointermove', this._playInputHandlerMove);
         this.canvas.addEventListener('pointerup', this._playInputHandlerUp);
@@ -340,17 +454,25 @@ export class LudexaEngine {
         
         requestAnimationFrame((time) => this.gameLoop(time));
     }
-// fin 4
 
-// debut 5
     stopPlayMode() {
         this.isPlaying = false;
         this.draggedGameObjects = [];
+        this.activeCollisions = new Set();
         this.executingSceneId = null;
         this.canvas.removeEventListener('pointerdown', this._playInputHandlerDown);
         this.canvas.removeEventListener('pointermove', this._playInputHandlerMove);
         this.canvas.removeEventListener('pointerup', this._playInputHandlerUp);
         
+        if (this.activeSounds) {
+            this.activeSounds.forEach(a => { a.pause(); a.currentTime = 0; });
+            this.activeSounds = [];
+        }
+        
+        this.cameraX = 0;
+        this.cameraY = 0;
+        this.cameraTarget = null;
+
         if (this.initialScenesBackup) {
             for (let sceneId in this.initialScenesBackup) {
                 if (this.sm.scenes[sceneId]) {
@@ -375,12 +497,79 @@ export class LudexaEngine {
         const deltaTime = (timestamp - this.lastTime) / 1000;
         this.lastTime = timestamp;
 
+        // --- CAMERA ---
+        if (this.cameraTarget) {
+            let tx = this.cameraTarget.x;
+            let ty = this.cameraTarget.y;
+            if (this.cameraTarget.type === 'rect' || this.cameraTarget.type === 'button') {
+                tx += (this.cameraTarget.w || 0) / 2;
+                ty += (this.cameraTarget.h || 0) / 2;
+            }
+            const targetCamX = tx - (this.canvas.width / 2);
+            const targetCamY = ty - (this.canvas.height / 2);
+            
+            this.cameraX += (targetCamX - (this.cameraX || 0)) * (this.cameraLerp || 1);
+            this.cameraY += (targetCamY - (this.cameraY || 0)) * (this.cameraLerp || 1);
+        }
+
         if (this.draggedGameObjects && this.draggedGameObjects.length > 0) {
             this.draggedGameObjects.forEach(obj => {
-                obj.x = this.playTouchX - (obj.dragOffsetX || 0);
-                obj.y = this.playTouchY - (obj.dragOffsetY || 0);
+                let pX = this.playTouchX;
+                let pY = this.playTouchY;
+                if (obj.isHUD) {
+                    pX -= (this.cameraX || 0);
+                    pY -= (this.cameraY || 0);
+                }
+                obj.x = pX - (obj.dragOffsetX || 0);
+                obj.y = pY - (obj.dragOffsetY || 0);
             });
         }
+
+        this.objects.forEach(obj => {
+            if (obj.currentAnim) {
+                obj.currentAnim.timer += deltaTime;
+                const frameDuration = 1 / (obj.currentAnim.fps || 12);
+                
+                if (obj.currentAnim.timer >= frameDuration) {
+                    obj.currentAnim.timer = 0;
+                    obj.currentAnim.frameIndex++;
+                    
+                    if (obj.currentAnim.frameIndex >= obj.currentAnim.frames.length) {
+                        if (obj.currentAnim.loop) {
+                            obj.currentAnim.frameIndex = 0;
+                            obj.assetId = obj.currentAnim.frames[obj.currentAnim.frameIndex];
+                        } else {
+                            obj.currentAnim = null; 
+                        }
+                    } else {
+                        obj.assetId = obj.currentAnim.frames[obj.currentAnim.frameIndex];
+                    }
+                }
+            }
+        });
+
+        this.activeCollisions = this.activeCollisions || new Set();
+        const currentCollisions = new Set();
+
+        for (let i = 0; i < this.objects.length; i++) {
+            for (let j = i + 1; j < this.objects.length; j++) {
+                const a = this.objects[i];
+                const b = this.objects[j];
+                if (!a.visible || !b.visible) continue;
+
+                if (this.checkCollision(a, b)) {
+                    const pairId = a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`;
+                    currentCollisions.add(pairId);
+
+                    if (!this.activeCollisions.has(pairId)) {
+                        this.activeCollisions.add(pairId);
+                        this._triggerCollisionNode(a, b);
+                        this._triggerCollisionNode(b, a);
+                    }
+                }
+            }
+        }
+        this.activeCollisions = currentCollisions;
 
         this.triggerEvent("À chaque frame", { deltaTime });
         this.render();
@@ -390,9 +579,7 @@ export class LudexaEngine {
     triggerEvent(eventTitle, eventData = {}) {
         const activeScenes = [this.sm.currentSceneId];
         this.objects.forEach(o => { 
-            if (o.isHUD && o.hudSource && !activeScenes.includes(o.hudSource)) {
-                activeScenes.push(o.hudSource); 
-            }
+            if (o.isHUD && o.hudSource && !activeScenes.includes(o.hudSource)) activeScenes.push(o.hudSource); 
         });
         
         const prevSceneId = this.executingSceneId;
@@ -439,7 +626,6 @@ export class LudexaEngine {
     }
 
     evaluateNode(node, context) {
-        // MULTI-SCRIPTS : Détection de l'apparition d'un nouveau HUD pour forcer son "Au démarrage"
         const getHUDs = () => Array.from(new Set(this.objects.filter(o => o.isHUD).map(o => o.hudSource)));
         const beforeHUDs = getHUDs();
 
@@ -449,7 +635,6 @@ export class LudexaEngine {
         if (afterHUDs.length > beforeHUDs.length) {
             afterHUDs.forEach(hudId => {
                 if (!beforeHUDs.includes(hudId)) {
-                    // C'est un nouveau HUD ! On lui envoie l'événement "Au démarrage" manquant
                     const prevSceneId = this.executingSceneId;
                     this.executingSceneId = hudId;
                     const activeScript = this.scripts[hudId] || { nodes: [], connections: [] };
@@ -465,5 +650,5 @@ export class LudexaEngine {
         return result;
     }
 }
-// fin 5
+// fin 6
 

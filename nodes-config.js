@@ -9,7 +9,7 @@ window.BlueprintCatalog = {
                 { title: "Au démarrage", isStart: true, execOutputs: ["Suite"] },
                 { title: "À chaque frame", isStart: true, execOutputs: ["Suite"], dataOutputs: ["DeltaTime"] },
                 { title: "Clic sur un Objet 🖱️", isStart: true, dataInputs: ["Cible"], execOutputs: ["Suite"] },
-                { title: "En collision 💥", isStart: true, execOutputs: ["Suite"], dataOutputs: ["Objet Touché"] },
+                { title: "En collision 💥", isStart: true, dataInputs: ["Cible"], execOutputs: ["Suite"], dataOutputs: ["Objet Touché"] },
                 { title: "Appui écran 👆", isStart: true, execOutputs: ["Suite"], dataOutputs: ["Position X", "Position Y"] },
                 { title: "Relâchement écran 🖱️", isStart: true, execOutputs: ["Suite"] }
             ]
@@ -27,11 +27,24 @@ window.BlueprintCatalog = {
                 { title: "Définir Z-Index ↕️", isStart: false, dataInputs: ["Cible", "Valeur"], execOutputs: ["Suite"] },
                 { title: "Commencer à Glisser 🖐️", isStart: false, dataInputs: ["Cible"], execOutputs: ["Suite"] },
                 { title: "Arrêter de Glisser 🛑", isStart: false, execOutputs: ["Suite"] },
-                { title: "Détruire l'objet 🗑️", isStart: false, dataInputs: ["Cible"], execOutputs: ["Suite"] }
+                { title: "Détruire l'objet 🗑️", isStart: false, dataInputs: ["Cible"], execOutputs: ["Suite"] },
+                { title: "Cloner un Objet 🐑", isStart: false, dataInputs: ["Cible", "Nouveau X", "Nouveau Y"], execOutputs: ["Suite"], dataOutputs: ["Nouvel Objet"] },
+                { title: "Suivre Objet (Caméra) 🎥", isStart: false, dataInputs: ["Cible", "Douceur (0 à 1)"], execOutputs: ["Suite"] },
+                { title: "Déplacer Caméra 🎥", isStart: false, dataInputs: ["X", "Y"], execOutputs: ["Suite"] }
             ]
         },
 // fin 1
 // debut 2
+        {
+            id: "animations",
+            title: "🎞️ Animations & Images",
+            color: "#ff7675",
+            nodes: [
+                { title: "Changer Image 🖼️", isStart: false, dataInputs: ["Cible", "Nom de l'Asset"], execOutputs: ["Suite"] },
+                { title: "Jouer Animation 🎬", isStart: false, dataInputs: ["Cible", "Images (séparées par ,)", "FPS", "Boucle (Vrai/Faux)"], execOutputs: ["Suite"] },
+                { title: "Arrêter Animation 🛑", isStart: false, dataInputs: ["Cible"], execOutputs: ["Suite"] }
+            ]
+        },
         {
             id: "text",
             title: "📝 Texte & Apparence",
@@ -76,7 +89,9 @@ window.BlueprintCatalog = {
             color: "#f1c40f",
             nodes: [
                 { title: "Définir Variable ✍️", isStart: false, dataInputs: ["Nom", "Valeur"], execOutputs: ["Suite"] },
-                { title: "Lire Variable 📖", isStart: false, dataInputs: ["Nom"], dataOutputs: ["Valeur"] }
+                { title: "Lire Variable 📖", isStart: false, dataInputs: ["Nom"], dataOutputs: ["Valeur"] },
+                { title: "Sauvegarder Jeu 💾", isStart: false, execOutputs: ["Suite"] },
+                { title: "Charger Jeu 📂", isStart: false, execOutputs: ["Suite"] }
             ]
         },
         {
@@ -88,7 +103,8 @@ window.BlueprintCatalog = {
                 { title: "Changer de Scène 🎬", isStart: false, dataInputs: ["Nom de la scène"], execOutputs: ["Suite"] },
                 { title: "Superposer Scène (HUD) 🖼️", isStart: false, dataInputs: ["Nom de la scène"], execOutputs: ["Suite"] },
                 { title: "Fermer le HUD 🚫", isStart: false, execOutputs: ["Suite"] },
-                { title: "Jouer un Son 🎵", isStart: false, dataInputs: ["Nom du Son"], execOutputs: ["Suite"] }
+                { title: "Jouer un Son 🎵", isStart: false, dataInputs: ["Nom du Son", "Volume (0 à 1)", "Boucle (Vrai/Faux)"], execOutputs: ["Suite"] },
+                { title: "Arrêter les Sons 🔇", isStart: false, execOutputs: ["Suite"] }
             ]
         }
     ]

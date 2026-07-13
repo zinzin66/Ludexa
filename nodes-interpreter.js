@@ -24,12 +24,17 @@ function evaluateDataNode(engine, nodeId, pinName, context) {
             return Function(`"use strict"; return (${evalString})`)();
         } 
         catch (e) {
-            // CORRECTION : Tolère le texte brut s'il ne peut pas être évalué mathématiquement
             return val;
         }
     };
 
     switch (node.title.trim()) {
+        case "En collision 💥":
+            if (pinName.trim() === "Objet Touché") return context.hitObject || 0;
+            return 0;
+        case "Cloner un Objet 🐑":
+            if (pinName.trim() === "Nouvel Objet") return context.lastClonedObject || 0;
+            return 0;
         case "Nombre Aléatoire 🎲": return Math.random() * (getLocalField("Max") - getLocalField("Min")) + getLocalField("Min");
         case "Opération 🧮": return getLocalField("A") + getLocalField("B");
         case "Comparer ⚖️":
@@ -70,7 +75,6 @@ function evaluateNode(engine, node, context) {
             return Function(`"use strict"; return (${evalString})`)();
         } 
         catch (e) {
-            // CORRECTION : Idem pour les paramètres d'action
             return val; 
         } 
     };
@@ -78,6 +82,56 @@ function evaluateNode(engine, node, context) {
     const target = getInputValue("Cible") || context.target;
 
     switch (node.title.trim()) {
+        case "Suivre Objet (Caméra) 🎥":
+            if (target) {
+                engine.cameraTarget = target;
+                const s = parseFloat(getInputValue("Douceur (0 à 1)"));
+                engine.cameraLerp = isNaN(s) ? 1 : Math.max(0.01, Math.min(1, s));
+            }
+            break;
+            
+        case "Déplacer Caméra 🎥":
+            engine.cameraX = parseFloat(getInputValue("X")) || 0;
+            engine.cameraY = parseFloat(getInputValue("Y")) || 0;
+            engine.cameraTarget = null;
+            break;
+
+        case "Cloner un Objet 🐑":
+            if (target) {
+                const newObj = JSON.parse(JSON.stringify(target));
+                newObj.id = `obj_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                const newX = parseFloat(getInputValue("Nouveau X"));
+                const newY = parseFloat(getInputValue("Nouveau Y"));
+                if (!isNaN(newX)) newObj.x = newX;
+                if (!isNaN(newY)) newObj.y = newY;
+                engine.objects.push(newObj);
+                context.lastClonedObject = newObj;
+            }
+            break;
+
+        case "Changer Image 🖼️":
+            if (target) target.assetId = String(getInputValue("Nom de l'Asset")).trim();
+            break;
+        case "Jouer Animation 🎬":
+            if (target) {
+                const imagesStr = String(getInputValue("Images (séparées par ,)"));
+                const frames = imagesStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                if (frames.length > 0) {
+                    target.currentAnim = {
+                        frames: frames,
+                        fps: parseFloat(getInputValue("FPS")) || 12,
+                        loop: Boolean(getInputValue("Boucle (Vrai/Faux)")),
+                        timer: 0,
+                        frameIndex: 0
+                    };
+                    target.assetId = frames[0];
+                }
+            }
+            break;
+        case "Arrêter Animation 🛑":
+            if (target) target.currentAnim = null;
+            break;
+
         case "Déplacer ➡️":
             if (target) {
                 const dt = context.deltaTime || 0.016;
@@ -106,11 +160,10 @@ function evaluateNode(engine, node, context) {
                 if (index !== -1) engine.objects.splice(index, 1);
             }
             break;
-
+// fin 2
+// debut 3
         case "Modifier Texte ✍️":
-            if (target) {
-                target.text = getInputValue("Nouveau Texte");
-            }
+            if (target) target.text = getInputValue("Nouveau Texte");
             break;
         case "Taille du Texte 📏":
             if (target) target.fontSize = parseFloat(getInputValue("Taille (px)"));
@@ -121,18 +174,22 @@ function evaluateNode(engine, node, context) {
         case "Transparence 👻":
             if (target) target.opacity = Math.max(0, Math.min(1, parseFloat(getInputValue("Opacité (0 à 1)"))));
             break;
-
         case "Filtre: Sépia 🎞️": if (target) target.filter = 'sepia(100%)'; break;
         case "Filtre: Niveaux de gris 🌑": if (target) target.filter = 'grayscale(100%)'; break;
         case "Filtre: Inverser 🌈": if (target) target.filter = 'invert(100%)'; break;
         case "Retirer Filtres 🚫": if (target) target.filter = 'none'; break;
-// fin 2
-// debut 3
+
         case "Commencer à Glisser 🖐️":
             if (target) {
                 engine.draggedGameObjects = engine.draggedGameObjects || [];
-                target.dragOffsetX = engine.playTouchX - target.x;
-                target.dragOffsetY = engine.playTouchY - target.y;
+                let pX = engine.playTouchX;
+                let pY = engine.playTouchY;
+                if (target.isHUD && engine.isPlaying) {
+                    pX -= (engine.cameraX || 0);
+                    pY -= (engine.cameraY || 0);
+                }
+                target.dragOffsetX = pX - target.x;
+                target.dragOffsetY = pY - target.y;
                 if (!engine.draggedGameObjects.includes(target)) {
                     engine.draggedGameObjects.push(target);
                 }
@@ -189,10 +246,43 @@ function evaluateNode(engine, node, context) {
             break;
 
         case "Afficher Message 💬": console.log("[Blueprint Message] :", getInputValue("Texte")); break;
-        case "Jouer un Son 🎵": console.log("[Blueprint Audio] Lecture du son :", getInputValue("Nom du Son")); break;
+        
+        case "Jouer un Son 🎵":
+            const soundName = String(getInputValue("Nom du Son")).trim();
+            const volInput = getInputValue("Volume (0 à 1)");
+            const volume = volInput !== undefined && volInput !== "" ? parseFloat(volInput) : 1;
+            const loop = Boolean(getInputValue("Boucle (Vrai/Faux)"));
+            engine.playSound(soundName, volume, loop);
+            break;
+            
+        case "Arrêter les Sons 🔇":
+            if (engine.activeSounds) {
+                engine.activeSounds.forEach(a => { a.pause(); a.currentTime = 0; });
+                engine.activeSounds = [];
+            }
+            break;
+
         case "Définir Variable ✍️":
             const varNameField = node.fields?.find(f => f.name === "Nom");
             if (varNameField) engine.gameVariables[varNameField.value] = getInputValue("Valeur");
+            break;
+
+        case "Sauvegarder Jeu 💾":
+            try {
+                localStorage.setItem('ludexa_player_save', JSON.stringify(engine.gameVariables));
+                console.log("[Ludexa] Partie sauvegardée avec succès !");
+            } catch (e) { console.error("Erreur de sauvegarde", e); }
+            break;
+
+        case "Charger Jeu 📂":
+            try {
+                const savedData = localStorage.getItem('ludexa_player_save');
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    Object.assign(engine.gameVariables, parsed);
+                    console.log("[Ludexa] Partie chargée avec succès !");
+                }
+            } catch (e) { console.error("Erreur de chargement", e); }
             break;
 
         case "Condition Si (If) 🔀":
@@ -227,4 +317,4 @@ function evaluateNode(engine, node, context) {
 
 window.NodesInterpreter = { evaluateDataNode, evaluateNode };
 // fin 3
- 
+
