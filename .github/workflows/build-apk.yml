@@ -58,18 +58,22 @@ jobs:
           cd myapp
           cordova build android --release -- --packageType=apk
       
-      - name: Find APK
-        run: find myapp -name "app-release*.apk" -type f
-      
-      - name: Sign APK
+      - name: Sign and Align APK
         run: |
           cd myapp/platforms/android/app/build/outputs/apk/release/
-          keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias mykey -storepass "password123" -keypass "password123" -dname "CN=Ludexa" 2>/dev/null || true
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore my.keystore -storepass "password123" -keypass "password123" app-release-unsigned.apk mykey
-          mv app-release-unsigned.apk app-release-signed.apk
+          # 1. Génération du keystore (si inexistant)
+          keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias mykey -storepass "password123" -keypass "password123" -dname "CN=Ludexa" || true
+          
+          # 2. Utilisation de zipalign (optimisation obligatoire avant signature v2)
+          # Note: zipalign est fourni avec le SDK Android
+          zipalign -v 4 app-release-unsigned.apk app-release-aligned.apk
+          
+          # 3. Signature avec apksigner (obligatoire pour Android moderne)
+          apksigner sign --ks my.keystore --ks-key-alias mykey --ks-pass pass:password123 --key-pass pass:password123 --out app-release-signed.apk app-release-aligned.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Ludexa-APK
           path: myapp/platforms/android/app/build/outputs/apk/release/app-release-signed.apk
+          
