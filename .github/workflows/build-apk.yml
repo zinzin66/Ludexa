@@ -43,7 +43,7 @@ jobs:
           cp ../*.js www/ 2>/dev/null || true
           cp ../*.css www/ 2>/dev/null || true
       
-      - name: Update config for Android 16
+      - name: Update config
         run: |
           cd myapp
           sed -i '/<platform name="android">/a\        <preference name="android:targetSdkVersion" value="35" />\n        <preference name="android:minSdkVersion" value="24" />' config.xml
@@ -56,20 +56,22 @@ jobs:
       - name: Build APK
         run: |
           cd myapp
-          cordova build android --release -- --packageType=apk
+          cordova build android --release
       
       - name: Sign and Align APK
         run: |
+          # Localiser le SDK Android pour trouver les outils de signature
+          export BUILD_TOOLS_PATH=$(ls -d /usr/local/lib/android/sdk/build-tools/* | tail -n 1)
+          
+          # Aller dans le dossier du build
           cd myapp/platforms/android/app/build/outputs/apk/release/
-          # 1. Génération du keystore (si inexistant)
-          keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias mykey -storepass "password123" -keypass "password123" -dname "CN=Ludexa" || true
           
-          # 2. Utilisation de zipalign (optimisation obligatoire avant signature v2)
-          # Note: zipalign est fourni avec le SDK Android
-          zipalign -v 4 app-release-unsigned.apk app-release-aligned.apk
+          # Générer le keystore
+          keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias mykey -storepass "password123" -keypass "password123" -dname "CN=Ludexa"
           
-          # 3. Signature avec apksigner (obligatoire pour Android moderne)
-          apksigner sign --ks my.keystore --ks-key-alias mykey --ks-pass pass:password123 --key-pass pass:password123 --out app-release-signed.apk app-release-aligned.apk
+          # Utiliser zipalign et apksigner depuis le chemin trouvé
+          $BUILD_TOOLS_PATH/zipalign -v 4 app-release-unsigned.apk app-release-aligned.apk
+          $BUILD_TOOLS_PATH/apksigner sign --ks my.keystore --ks-key-alias mykey --ks-pass pass:password123 --key-pass pass:password123 --out app-release-signed.apk app-release-aligned.apk
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
