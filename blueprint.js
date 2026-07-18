@@ -688,3 +688,103 @@ document.getElementById('btn-open-blueprint')?.addEventListener('click', () => {
 });
 // fin 5
 
+// debut 6
+// ==========================================
+// INJECTION PAR LE BAS : NOUVEAUTÉS ET RÉPARATIONS
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // 1. AJOUT DU ZOOM DANS LE BLUEPRINT
+    const bpHeader = document.querySelector('#blueprint-modal header');
+    if (bpHeader) {
+        const bpZoomGroup = document.createElement('div');
+        bpZoomGroup.style.cssText = 'display: flex; gap: 5px; margin-right: auto; margin-left: 20px; align-items: center;';
+        bpZoomGroup.innerHTML = '<span style="color:#a0aec0; font-size:12px; margin-right:5px;">🔍 Zoom</span>';
+        
+        const bZoomOut = document.createElement('button'); bZoomOut.textContent = '-';
+        const bZoomReset = document.createElement('button'); bZoomReset.textContent = '1:1';
+        const bZoomIn = document.createElement('button'); bZoomIn.textContent = '+';
+        
+        [bZoomOut, bZoomReset, bZoomIn].forEach(btn => {
+            btn.style.cssText = 'background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; touch-action: manipulation;';
+            bpZoomGroup.appendChild(btn);
+        });
+
+        bZoomOut.onclick = () => { if(window.ludexaBlueprint) { window.ludexaBlueprint.zoom /= 1.2; window.ludexaBlueprint.draw(); } };
+        bZoomReset.onclick = () => { if(window.ludexaBlueprint) { window.ludexaBlueprint.zoom = 1; window.ludexaBlueprint.panX = 0; window.ludexaBlueprint.panY = 0; window.ludexaBlueprint.draw(); } };
+        bZoomIn.onclick = () => { if(window.ludexaBlueprint) { window.ludexaBlueprint.zoom *= 1.2; window.ludexaBlueprint.draw(); } };
+
+        bpHeader.insertBefore(bpZoomGroup, bpHeader.children[1] || null);
+    }
+
+    // 2. RÉPARATIONS DANS L'ÉDITEUR PRINCIPAL
+    setTimeout(() => {
+        const e = window.engine;
+        if (!e) return;
+
+        // -- A. Réparation de la Main --
+        const btnHand = document.getElementById('btn-tool-hand');
+        if (btnHand) {
+            const newBtnHand = btnHand.cloneNode(true);
+            btnHand.parentNode.replaceChild(newBtnHand, btnHand);
+            
+            newBtnHand.addEventListener('click', () => {
+                e.currentTool = e.currentTool === 'hand' ? 'select' : 'hand';
+                newBtnHand.style.background = e.currentTool === 'hand' ? '#3b82f6' : ''; 
+                newBtnHand.style.color = e.currentTool === 'hand' ? 'white' : ''; 
+            });
+        }
+
+        // -- B. Réparation de la Grille --
+        const btnGrid = document.getElementById('btn-toggle-grid');
+        if (btnGrid) {
+            const newBtnGrid = btnGrid.cloneNode(true);
+            btnGrid.parentNode.replaceChild(newBtnGrid, btnGrid);
+            
+            if (e.showGrid === undefined) e.showGrid = true;
+            
+            newBtnGrid.addEventListener('click', () => {
+                e.showGrid = !e.showGrid;
+                newBtnGrid.style.background = e.showGrid ? '' : '#ef4444'; 
+                e.render();
+            });
+        }
+
+        // -- C. Réparation du Zoom Principal --
+        const bOut = document.getElementById('btn-zoom-out');
+        const bReset = document.getElementById('btn-zoom-reset');
+        const bIn = document.getElementById('btn-zoom-in');
+
+        if (bOut) {
+            const nOut = bOut.cloneNode(true); bOut.parentNode.replaceChild(nOut, bOut);
+            nOut.addEventListener('click', () => { e.zoom /= 1.2; e.render(); });
+        }
+        if (bReset) {
+            const nReset = bReset.cloneNode(true); bReset.parentNode.replaceChild(nReset, bReset);
+            nReset.addEventListener('click', () => { e.zoom = 1; e.panX = 0; e.panY = 0; e.render(); });
+        }
+        if (bIn) {
+            const nIn = bIn.cloneNode(true); bIn.parentNode.replaceChild(nIn, bIn);
+            nIn.addEventListener('click', () => { e.zoom *= 1.2; e.render(); });
+        }
+
+        // -- D. CORRECTION DU DÉCALAGE SOURIS (Menu masqué) --
+        const canvasContainer = document.getElementById('canvas-container');
+        if (canvasContainer && typeof e.resizeCanvas === 'function') {
+            const resizeObserver = new ResizeObserver(() => {
+                e.resizeCanvas();
+                e.render();
+            });
+            resizeObserver.observe(canvasContainer);
+        }
+        const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+        if (btnToggleSidebar) {
+            btnToggleSidebar.addEventListener('click', () => {
+                setTimeout(() => { if (typeof e.resizeCanvas === 'function') { e.resizeCanvas(); e.render(); } }, 300); 
+            });
+        }
+
+    }, 800);
+});
+// fin 6
+

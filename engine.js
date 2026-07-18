@@ -154,18 +154,18 @@ export class LudexaEngine {
             let checkX = worldX;
             let checkY = worldY;
             
-            // Les HUD ignorent la caméra, il faut donc compenser leurs coordonnées
             if (this.isPlaying && obj.isHUD) {
                 checkX -= (this.cameraX || 0);
                 checkY -= (this.cameraY || 0);
             }
 
-            if (obj.type === 'rect' || obj.type === 'button') {
-                return checkX >= obj.x && checkX <= obj.x + obj.w && checkY >= obj.y && checkY <= obj.y + obj.h;
+            // On fusionne les textes avec les rectangles/boutons pour utiliser w et h
+            if (obj.type === 'rect' || obj.type === 'button' || obj.type === 'text') {
+                const w = obj.w || (obj.type === 'text' ? 140 : 0);
+                const h = obj.h || (obj.type === 'text' ? 32 : 0);
+                return checkX >= obj.x && checkX <= obj.x + w && checkY >= obj.y && checkY <= obj.y + h;
             } else if (obj.type === 'circle') {
                 return Math.hypot(checkX - obj.x, checkY - obj.y) <= obj.r;
-            } else if (obj.type === 'text') {
-                return checkX >= obj.x && checkX <= obj.x + 140 && checkY >= obj.y && checkY <= obj.y + 30;
             }
             return false;
         });
@@ -174,8 +174,9 @@ export class LudexaEngine {
     checkCollision(a, b) {
         const getBox = (obj) => {
             if (obj.type === 'circle') return null;
-            const w = obj.type === 'text' ? 140 : (obj.w || 0);
-            const h = obj.type === 'text' ? 30 : (obj.h || 0);
+            // Correction des collisions pour le texte
+            const w = obj.w || (obj.type === 'text' ? 140 : 0);
+            const h = obj.h || (obj.type === 'text' ? 32 : 0);
             return { x: obj.x, y: obj.y, w: w, h: h };
         };
 
@@ -206,8 +207,9 @@ export class LudexaEngine {
         if (!obj) return null;
         const s = this.handleSize / this.zoom;
         if (obj.type === 'rect' || obj.type === 'button' || obj.type === 'text') {
-            const width = obj.type === 'text' ? 140 : obj.h ? obj.w : 140;
-            const height = obj.type === 'text' ? 32 : obj.h ? obj.h : 32;
+            // Fini le 140/32 en dur, on lit la vraie taille
+            const width = obj.w || (obj.type === 'text' ? 140 : 140);
+            const height = obj.h || (obj.type === 'text' ? 32 : 32);
             const handles = { tl: { x: obj.x, y: obj.y }, tr: { x: obj.x + width, y: obj.y }, bl: { x: obj.x, y: obj.y + height }, br: { x: obj.x + width, y: obj.y + height } };
             for (const [name, p] of Object.entries(handles)) {
                 if (worldX >= p.x - s && worldX <= p.x + s && worldY >= p.y - s && worldY <= p.y + s) return name;
@@ -221,7 +223,15 @@ export class LudexaEngine {
     resizeObject(obj, handle, worldPos) {
         const minSize = 15;
         if (handle === 'radius' && obj.type === 'circle') { obj.r = Math.max(minSize, Math.round(worldPos.x - obj.x)); return; }
-        if (obj.type === 'text') { if (handle === 'br' || handle === 'tr') obj.fontSize = Math.max(10, Math.round(worldPos.y - obj.y)); return; }
+        
+        if (obj.type === 'text') { 
+            // On permet aux poignées du bas (br et bl) de gérer la taille du texte intuitivement
+            if (handle === 'br' || handle === 'bl') { 
+                obj.fontSize = Math.max(10, Math.round(worldPos.y - obj.y)); 
+            } 
+            return; 
+        }
+        
         if (handle === 'br') { obj.w = Math.max(minSize, Math.round(worldPos.x - obj.x)); obj.h = Math.max(minSize, Math.round(worldPos.y - obj.y)); } 
         else if (handle === 'bl') { const oldRight = obj.x + obj.w; obj.x = Math.min(oldRight - minSize, Math.round(worldPos.x)); obj.w = oldRight - obj.x; obj.h = Math.max(minSize, Math.round(worldPos.y - obj.y)); } 
         else if (handle === 'tr') { obj.w = Math.max(minSize, Math.round(worldPos.x - obj.x)); const oldBottom = obj.y + obj.h; obj.y = Math.min(oldBottom - minSize, Math.round(worldPos.y)); obj.h = oldBottom - obj.y; } 
@@ -251,12 +261,24 @@ export class LudexaEngine {
             for (let y = startY; y < endY; y += gridSize) { this.ctx.beginPath(); this.ctx.moveTo(startX, y); this.ctx.lineTo(endX, y); this.ctx.stroke(); }
         }
 
+        // --- DESSIN DE LA CAMÉRA (Mode Paysage) ---
+        if (!this.isPlaying) {
+            const camWidth = 1280;  
+            const camHeight = 720;  
+            this.ctx.strokeStyle = '#ff4757'; 
+            this.ctx.lineWidth = 2 / this.zoom;
+            this.ctx.strokeRect(0, 0, camWidth, camHeight);
+            this.ctx.fillStyle = '#ff4757';
+            this.ctx.font = `${14 / this.zoom}px sans-serif`;
+            this.ctx.textBaseline = 'bottom';
+            this.ctx.fillText("📷 Limite Caméra (Paysage 1280x720)", 5 / this.zoom, -5 / this.zoom);
+        }
+
         const sorted = [...this.objects].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
         sorted.forEach(obj => {
             if (!obj.visible) return;
             this.ctx.save();
             
-            // La caméra affecte tout SAUF le HUD pendant le jeu
             if (this.isPlaying && !obj.isHUD) {
                 this.ctx.translate(-(this.cameraX || 0), -(this.cameraY || 0));
             }
@@ -265,8 +287,8 @@ export class LudexaEngine {
             this.ctx.filter = obj.filter || 'none';
 
             if (obj.angle) {
-                const centerX = obj.type === 'circle' ? obj.x : obj.x + obj.w / 2;
-                const centerY = obj.type === 'circle' ? obj.y : obj.y + obj.h / 2;
+                const centerX = obj.type === 'circle' ? obj.x : obj.x + (obj.w || 0) / 2;
+                const centerY = obj.type === 'circle' ? obj.y : obj.y + (obj.h || 0) / 2;
                 this.ctx.translate(centerX, centerY);
                 this.ctx.rotate(obj.angle * Math.PI / 180);
                 this.ctx.translate(-centerX, -centerY);
@@ -296,7 +318,13 @@ export class LudexaEngine {
                 this.ctx.fillStyle = obj.color || '#ffffff';
                 this.ctx.font = `${obj.fontSize || 20}px sans-serif`;
                 this.ctx.textBaseline = 'top'; 
-                this.ctx.fillText(obj.text || 'Mon Texte', obj.x, obj.y);
+                
+                // CRUCIAL : On met à jour w et h en temps réel pour que la physique du Bloc 3 suive
+                const textString = obj.text || 'Mon Texte';
+                obj.w = this.ctx.measureText(textString).width;
+                obj.h = obj.fontSize || 20;
+
+                this.ctx.fillText(textString, obj.x, obj.y);
             }
 
             this.ctx.filter = 'none';
@@ -304,14 +332,13 @@ export class LudexaEngine {
             if (obj.id === this.selectedObjectId) {
                 this.ctx.strokeStyle = '#6366f1'; this.ctx.lineWidth = 2 / this.zoom; this.ctx.fillStyle = '#ffffff';
                 const s = this.handleSize / this.zoom;
-                if (obj.type === 'rect' || obj.type === 'button') {
+                
+                // Les textes utilisent maintenant exactement le même système de poignées que les rectangles
+                if (obj.type === 'rect' || obj.type === 'button' || obj.type === 'text') {
                     this.ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
                     [{x: obj.x, y: obj.y}, {x: obj.x + obj.w, y: obj.y}, {x: obj.x, y: obj.y + obj.h}, {x: obj.x + obj.w, y: obj.y + obj.h}].forEach(p => this.ctx.fillRect(p.x - s/2, p.y - s/2, s, s));
                 } else if (obj.type === 'circle') {
                     this.ctx.beginPath(); this.ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2); this.ctx.stroke(); this.ctx.fillRect(obj.x + obj.r - s/2, obj.y - s/2, s, s);
-                } else if (obj.type === 'text') {
-                    this.ctx.strokeRect(obj.x - 4, obj.y - 4, 140, 32);
-                    [{x: obj.x - 4, y: obj.y - 4}, {x: obj.x + 136, y: obj.y - 4}, {x: obj.x - 4, y: obj.y + 28}, {x: obj.x + 136, y: obj.y + 28}].forEach(p => this.ctx.fillRect(p.x - s/2, p.y - s/2, s, s));
                 }
             }
             this.ctx.restore();
@@ -319,6 +346,7 @@ export class LudexaEngine {
         this.ctx.restore();
     }
 // fin 4
+
 // debut 5
     loadBlueprint(jsonString) {
         try {
