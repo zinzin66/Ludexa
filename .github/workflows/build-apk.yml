@@ -56,7 +56,7 @@ jobs:
       - name: Build APK
         run: |
           cd myapp
-          cordova build android --release
+          cordova build android --release -- --packageType=apk
       
       - name: Sign and Align APK
         run: |
