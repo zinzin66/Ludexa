@@ -34,18 +34,30 @@ export class UIManager {
                 if (success) {
                     this.rebuildSceneSelector();
                     if (startScreen) startScreen.style.display = 'none';
-                    this.updateTreeview();
-                    this.updateInspector();
-                    this.updateVariablesUI();
-                    this.updateAssetsUI(); 
-                    this.e.render();
+                    // Les mises à jour de l'interface sont gérées dans applyProjectData
                 }
                 event.target.value = ''; 
             });
         });
 
+        // NOUVEAU BOUTON : Chargement Local
+        document.getElementById('btn-load-local')?.addEventListener('click', () => {
+            this.e.storage.loadFromLocal((success) => {
+                if (success) {
+                    this.rebuildSceneSelector();
+                    if (startScreen) startScreen.style.display = 'none';
+                } else {
+                    alert("Aucun projet trouvé en mémoire locale !");
+                }
+            });
+        });
+
         document.getElementById('btn-export-project')?.addEventListener('click', () => {
-            this.e.storage.exportProject();
+            if (window.cordova || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                this.e.storage.saveToLocal();
+            } else {
+                this.e.storage.exportProject();
+            }
         });
 
         document.getElementById('btn-close-project')?.addEventListener('click', () => {
@@ -54,6 +66,7 @@ export class UIManager {
             }
         });
 // fin 1
+
 // debut 2
         document.getElementById('btn-toggle-sidebar')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('hidden');
@@ -318,14 +331,36 @@ export class UIManager {
 </html>`;
 
             const blob = new Blob([htmlContent], { type: "text/html" });
+            const fileName = (this.e.projectName || "jeu_final") + "_build.html";
+            
+            // 1. TENTATIVE : Partage natif Android / Mobile
+            if (navigator.share) {
+                const file = new File([blob], fileName, { type: "text/html" });
+                
+                // Vérifie si le système autorise le partage de ce type de fichier
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: fileName,
+                        text: "Voici le build jouable de mon jeu Ludexa !"
+                    }).then(() => {
+                        console.log("Menu de partage natif ouvert avec succès.");
+                    }).catch(err => {
+                        console.error("Partage annulé ou échoué", err);
+                    });
+                    return; // On arrête ici l'exécution pour ne pas lancer le code PC
+                }
+            }
+
+            // 2. FALLBACK : Navigateur PC classique
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = (this.e.projectName || "jeu_final") + "_build.html";
+            a.download = fileName;
             a.click();
             URL.revokeObjectURL(url);
             
-            alert("Build généré avec succès ! Placez simplement ce fichier HTML dans votre dossier Ludexa (à côté de engine.js) pour qu'il soit jouable, ou zippez le tout pour le partager.");
+            alert("Build généré ! Si vous êtes sur PC, le téléchargement a démarré.");
         });
     }
 
@@ -342,6 +377,7 @@ export class UIManager {
         selectScene.value = this.e.sm?.currentSceneId || Object.keys(this.e.sm.scenes)[0];
     }
 // fin 3
+
 
 // debut 4
     updateTreeview() {
